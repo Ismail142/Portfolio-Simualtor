@@ -210,7 +210,7 @@ export default function App() {
         );
         sim.forEach((d) => {
           yearArr[d.year][`${rate}%`] = d.value;
-          yearArr[d.year][`w${rate}`] = d.withdrawal;
+          yearArr[d.year][`w${rate}`] = Math.round(d.withdrawal / 12);
         });
       });
     } else {
@@ -223,7 +223,7 @@ export default function App() {
       );
       sim.forEach((d) => {
         yearArr[d.year][fixedKey] = d.value;
-        yearArr[d.year][`w${fixedKey}`] = d.withdrawal;
+        yearArr[d.year][`w${fixedKey}`] = Math.round(d.withdrawal / 12);
       });
     }
     return yearArr;
@@ -549,11 +549,11 @@ export default function App() {
         </div>
 
         <div className="section">
-          <h2 className="section-title">ANNUAL EXPENSES (= WITHDRAWAL AMOUNT)</h2>
+          <h2 className="section-title">MONTHLY EXPENSES (= WITHDRAWAL ÷ 12)</h2>
           <p style={{ color: "#666", fontSize: 12, marginTop: -8, marginBottom: 14 }}>
             {mode === "pct"
-              ? "Your expenses each year equal exactly what you withdraw — they rise and fall with the portfolio"
-              : "Fixed monthly withdrawal — flat each year (capped if portfolio runs low)"}
+              ? "Monthly spend available each year — rises and falls with the portfolio value"
+              : "Fixed monthly withdrawal amount per year (capped if portfolio runs low)"}
           </p>
           <div style={{ width: "100%", height: 320 }}>
             <ResponsiveContainer>
@@ -572,7 +572,7 @@ export default function App() {
                       key={r}
                       type="monotone"
                       dataKey={`w${r}`}
-                      name={`${r}% withdrawal`}
+                      name={`${r}% monthly expense`}
                       stroke={colorFor(r)}
                       strokeWidth={2}
                       dot={false}
@@ -582,7 +582,7 @@ export default function App() {
                   <Line
                     type="monotone"
                     dataKey={`w${fixedKey}`}
-                    name="Annual withdrawal"
+                    name="Monthly expense"
                     stroke={FIXED_COLOR}
                     strokeWidth={2}
                     dot={false}

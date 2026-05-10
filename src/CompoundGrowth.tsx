@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   CartesianGrid,
   Legend,
@@ -90,6 +90,8 @@ const CustomTooltip = ({
   );
 };
 
+const CG_STORAGE_KEY = "compound-growth-inputs";
+
 export default function CompoundGrowth() {
   const [draftPrincipal, setDraftPrincipal] = useState<number | "">(10000);
   const [draftRate, setDraftRate] = useState<number | "">(8);
@@ -103,6 +105,40 @@ export default function CompoundGrowth() {
   const [frequency, setFrequency] = useState<Frequency>("monthly");
   const [years, setYears] = useState(20);
   const [calculated, setCalculated] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem(CG_STORAGE_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw) as {
+        principal?: number;
+        rate?: number;
+        contribution?: number;
+        frequency?: Frequency;
+        years?: number;
+      };
+      const p = Math.max(0, Number(saved.principal) || 0);
+      const r = Math.max(0, Number(saved.rate) || 0);
+      const c = Math.max(0, Number(saved.contribution) || 0);
+      const y = Math.max(1, Math.floor(Number(saved.years) || 1));
+      const freq: Frequency =
+        FREQ_OPTIONS.find((f) => f.value === saved.frequency)?.value ?? "monthly";
+      setDraftPrincipal(p);
+      setDraftRate(r);
+      setDraftContribution(c);
+      setDraftFrequency(freq);
+      setDraftYears(y);
+      setPrincipal(p);
+      setRate(r);
+      setContribution(c);
+      setFrequency(freq);
+      setYears(y);
+      setCalculated(true);
+    } catch {
+      /* ignore corrupt storage */
+    }
+  }, []);
 
   const isDirty =
     Number(draftPrincipal) !== principal ||
@@ -129,6 +165,16 @@ export default function CompoundGrowth() {
     setFrequency(draftFrequency);
     setYears(y);
     setCalculated(true);
+    if (typeof window !== "undefined") {
+      try {
+        window.localStorage.setItem(
+          CG_STORAGE_KEY,
+          JSON.stringify({ principal: p, rate: r, contribution: c, frequency: draftFrequency, years: y }),
+        );
+      } catch {
+        /* storage may be unavailable */
+      }
+    }
   };
 
   const growthData = useMemo(() => {
