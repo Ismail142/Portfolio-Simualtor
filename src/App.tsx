@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import CompoundGrowth from "./CompoundGrowth";
 import {
   CartesianGrid,
   Legend,
@@ -86,9 +87,12 @@ const CustomTooltip = ({
   );
 };
 
+type Page = "simulator" | "compound";
+
 const STORAGE_KEY = "portfolio-simulator-inputs";
 
 export default function App() {
+  const [page, setPage] = useState<Page>("simulator");
   const [draftPortfolio, setDraftPortfolio] = useState<number | "">(50000);
   const [draftMarketReturn, setDraftMarketReturn] = useState<number | "">(10);
   const [draftNumYears, setDraftNumYears] = useState<number | "">(20);
@@ -307,26 +311,54 @@ export default function App() {
         .mode-switch { display: inline-flex; border: 1px solid #1a1a28; border-radius: 8px; overflow: hidden; background: #0e0e18; }
         .mode-btn { background: transparent; color: #666; border: none; padding: 10px 18px; font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 1.5px; cursor: pointer; transition: all 0.15s; }
         .mode-btn.active { background: #00ff8722; color: #00ff87; }
+        .nav-bar { display: flex; gap: 4px; background: #0e0e18; border: 1px solid #1a1a28; border-radius: 10px; padding: 4px; width: fit-content; }
+        .nav-btn { background: transparent; border: none; color: #666; font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 1.5px; padding: 9px 20px; border-radius: 7px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+        .nav-btn.active { background: #00ff8718; color: #00ff87; }
+        .nav-btn:hover:not(.active) { color: #aaa; background: #ffffff08; }
       `}</style>
 
-      <header style={{ maxWidth: 1200, margin: "0 auto 24px" }}>
-        <h1
-          style={{
-            fontFamily: "'Bebas Neue', sans-serif",
-            fontSize: "clamp(36px, 5vw, 56px)",
-            letterSpacing: 4,
-            margin: 0,
-            color: "#fff",
-          }}
-        >
-          PORTFOLIO SIMULATOR
-        </h1>
-        <p style={{ color: "#777", margin: "6px 0 0", fontSize: 13 }}>
-          Choose % withdrawal or fixed monthly amount · monthly contributions included
-        </p>
+      <header style={{ maxWidth: 1200, margin: "0 auto 20px" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+          <div>
+            <h1
+              style={{
+                fontFamily: "'Bebas Neue', sans-serif",
+                fontSize: "clamp(32px, 4vw, 50px)",
+                letterSpacing: 4,
+                margin: 0,
+                color: "#fff",
+              }}
+            >
+              {page === "simulator" ? "PORTFOLIO SIMULATOR" : "COMPOUND GROWTH"}
+            </h1>
+            <p style={{ color: "#777", margin: "4px 0 0", fontSize: 13 }}>
+              {page === "simulator"
+                ? "Choose % withdrawal or fixed monthly amount · monthly contributions included"
+                : "Calculate how your investment grows with compound interest and regular contributions"}
+            </p>
+          </div>
+          <nav className="nav-bar">
+            <button
+              type="button"
+              className={`nav-btn ${page === "simulator" ? "active" : ""}`}
+              onClick={() => setPage("simulator")}
+            >
+              PORTFOLIO SIMULATOR
+            </button>
+            <button
+              type="button"
+              className={`nav-btn ${page === "compound" ? "active" : ""}`}
+              onClick={() => setPage("compound")}
+            >
+              COMPOUND GROWTH
+            </button>
+          </nav>
+        </div>
       </header>
 
       <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+        {page === "compound" && <CompoundGrowth />}
+        {page === "simulator" && (<>
         <div style={{ marginBottom: 16, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
           <span style={{ fontSize: 12, color: "#888", letterSpacing: 1.5 }}>WITHDRAWAL MODE</span>
           <div className="mode-switch">
@@ -623,6 +655,7 @@ export default function App() {
         >
           For illustrative purposes only · Not financial advice · Returns not guaranteed
         </p>
+        </>)}
       </div>
     </div>
   );
