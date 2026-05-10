@@ -92,7 +92,20 @@ type Page = "simulator" | "compound";
 const STORAGE_KEY = "portfolio-simulator-inputs";
 
 export default function App() {
-  const [page, setPage] = useState<Page>("simulator");
+  const [page, setPage] = useState<Page>(() => {
+    try {
+      const saved = window.localStorage.getItem("finance-tools-page");
+      return saved === "compound" ? "compound" : "simulator";
+    } catch {
+      return "simulator";
+    }
+  });
+
+  const navigateTo = (p: Page) => {
+    setPage(p);
+    try { window.localStorage.setItem("finance-tools-page", p); } catch { /* ignore */ }
+  };
+
   const [draftPortfolio, setDraftPortfolio] = useState<number | "">(50000);
   const [draftMarketReturn, setDraftMarketReturn] = useState<number | "">(10);
   const [draftNumYears, setDraftNumYears] = useState<number | "">(20);
@@ -317,6 +330,12 @@ export default function App() {
         .nav-pill { background: transparent; border: none; color: #666; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 1.5px; padding: 6px 16px; border-radius: 6px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
         .nav-pill.active { background: #00ff8718; color: #00ff87; }
         .nav-pill:hover:not(.active) { color: #aaa; background: #ffffff08; }
+        @media (max-width: 520px) {
+          .topbar-inner { flex-direction: column; height: auto; padding: 10px 16px; gap: 8px; }
+          .topbar-brand { font-size: 14px; letter-spacing: 2px; }
+          .nav-pills { width: 100%; }
+          .nav-pill { flex: 1; text-align: center; font-size: 10px; letter-spacing: 1px; padding: 7px 6px; }
+        }
       `}</style>
 
       <div className="topbar">
@@ -326,14 +345,14 @@ export default function App() {
             <button
               type="button"
               className={`nav-pill ${page === "simulator" ? "active" : ""}`}
-              onClick={() => setPage("simulator")}
+              onClick={() => navigateTo("simulator")}
             >
               PORTFOLIO SIMULATOR
             </button>
             <button
               type="button"
               className={`nav-pill ${page === "compound" ? "active" : ""}`}
-              onClick={() => setPage("compound")}
+              onClick={() => navigateTo("compound")}
             >
               COMPOUND GROWTH
             </button>
