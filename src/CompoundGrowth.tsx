@@ -152,23 +152,6 @@ export default function CompoundGrowth() {
 
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-      <div style={{ marginBottom: 20 }}>
-        <h2
-          style={{
-            fontFamily: "'Bebas Neue', sans-serif",
-            fontSize: "clamp(28px, 4vw, 44px)",
-            letterSpacing: 4,
-            margin: 0,
-            color: "#fff",
-          }}
-        >
-          COMPOUND GROWTH CALCULATOR
-        </h2>
-        <p style={{ color: "#777", margin: "6px 0 0", fontSize: 13 }}>
-          See how your money grows with regular contributions over time
-        </p>
-      </div>
-
       <div
         style={{
           display: "grid",

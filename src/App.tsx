@@ -283,7 +283,6 @@ export default function App() {
         background: "#070710",
         color: "#e6e6f0",
         fontFamily: "'DM Mono', monospace",
-        padding: "32px 24px 64px",
       }}
     >
       <style>{`
@@ -311,49 +310,55 @@ export default function App() {
         .mode-switch { display: inline-flex; border: 1px solid #1a1a28; border-radius: 8px; overflow: hidden; background: #0e0e18; }
         .mode-btn { background: transparent; color: #666; border: none; padding: 10px 18px; font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 1.5px; cursor: pointer; transition: all 0.15s; }
         .mode-btn.active { background: #00ff8722; color: #00ff87; }
-        .nav-bar { display: flex; gap: 4px; background: #0e0e18; border: 1px solid #1a1a28; border-radius: 10px; padding: 4px; width: fit-content; }
-        .nav-btn { background: transparent; border: none; color: #666; font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 1.5px; padding: 9px 20px; border-radius: 7px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
-        .nav-btn.active { background: #00ff8718; color: #00ff87; }
-        .nav-btn:hover:not(.active) { color: #aaa; background: #ffffff08; }
+        .topbar { position: sticky; top: 0; z-index: 50; background: #07071099; backdrop-filter: blur(12px); border-bottom: 1px solid #1a1a28; }
+        .topbar-inner { max-width: 1200px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 52px; gap: 16px; }
+        .topbar-brand { font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 3px; color: #fff; white-space: nowrap; }
+        .nav-pills { display: flex; gap: 2px; background: #0e0e18; border: 1px solid #1a1a28; border-radius: 8px; padding: 3px; }
+        .nav-pill { background: transparent; border: none; color: #666; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 1.5px; padding: 6px 16px; border-radius: 6px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+        .nav-pill.active { background: #00ff8718; color: #00ff87; }
+        .nav-pill:hover:not(.active) { color: #aaa; background: #ffffff08; }
       `}</style>
 
-      <header style={{ maxWidth: 1200, margin: "0 auto 20px" }}>
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
-          <div>
-            <h1
-              style={{
-                fontFamily: "'Bebas Neue', sans-serif",
-                fontSize: "clamp(32px, 4vw, 50px)",
-                letterSpacing: 4,
-                margin: 0,
-                color: "#fff",
-              }}
-            >
-              {page === "simulator" ? "PORTFOLIO SIMULATOR" : "COMPOUND GROWTH"}
-            </h1>
-            <p style={{ color: "#777", margin: "4px 0 0", fontSize: 13 }}>
-              {page === "simulator"
-                ? "Choose % withdrawal or fixed monthly amount · monthly contributions included"
-                : "Calculate how your investment grows with compound interest and regular contributions"}
-            </p>
-          </div>
-          <nav className="nav-bar">
+      <div className="topbar">
+        <div className="topbar-inner">
+          <span className="topbar-brand">FINANCE TOOLS</span>
+          <nav className="nav-pills">
             <button
               type="button"
-              className={`nav-btn ${page === "simulator" ? "active" : ""}`}
+              className={`nav-pill ${page === "simulator" ? "active" : ""}`}
               onClick={() => setPage("simulator")}
             >
               PORTFOLIO SIMULATOR
             </button>
             <button
               type="button"
-              className={`nav-btn ${page === "compound" ? "active" : ""}`}
+              className={`nav-pill ${page === "compound" ? "active" : ""}`}
               onClick={() => setPage("compound")}
             >
               COMPOUND GROWTH
             </button>
           </nav>
         </div>
+      </div>
+
+      <div style={{ padding: "32px 24px 64px" }}>
+      <header style={{ maxWidth: 1200, margin: "0 auto 24px" }}>
+        <h1
+          style={{
+            fontFamily: "'Bebas Neue', sans-serif",
+            fontSize: "clamp(32px, 4vw, 50px)",
+            letterSpacing: 4,
+            margin: 0,
+            color: "#fff",
+          }}
+        >
+          {page === "simulator" ? "PORTFOLIO SIMULATOR" : "COMPOUND GROWTH"}
+        </h1>
+        <p style={{ color: "#777", margin: "4px 0 0", fontSize: 13 }}>
+          {page === "simulator"
+            ? "Choose % withdrawal or fixed monthly amount · monthly contributions included"
+            : "Calculate how your investment grows with compound interest and regular contributions"}
+        </p>
       </header>
 
       <div style={{ maxWidth: 1200, margin: "0 auto" }}>
@@ -656,6 +661,7 @@ export default function App() {
           For illustrative purposes only · Not financial advice · Returns not guaranteed
         </p>
         </>)}
+      </div>
       </div>
     </div>
   );
