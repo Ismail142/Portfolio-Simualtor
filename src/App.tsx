@@ -104,8 +104,11 @@ export default function App() {
     }
   });
 
+  const [menuOpen, setMenuOpen] = useState(false);
+
   const navigateTo = (p: Page) => {
     setPage(p);
+    setMenuOpen(false);
     try { window.localStorage.setItem("finance-tools-page", p); } catch { /* ignore */ }
   };
 
@@ -333,41 +336,70 @@ export default function App() {
         .nav-pill { background: transparent; border: none; color: #666; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 1.5px; padding: 6px 16px; border-radius: 6px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
         .nav-pill.active { background: #00ff8718; color: #00ff87; }
         .nav-pill:hover:not(.active) { color: #aaa; background: #ffffff08; }
-        @media (max-width: 520px) {
-          .topbar-inner { flex-direction: column; height: auto; padding: 10px 16px; gap: 8px; }
-          .topbar-brand { font-size: 14px; letter-spacing: 2px; }
-          .nav-pills { width: 100%; }
-          .nav-pill { flex: 1; text-align: center; font-size: 10px; letter-spacing: 1px; padding: 7px 6px; }
+        .hamburger { display: none; flex-direction: column; justify-content: center; gap: 5px; background: transparent; border: none; cursor: pointer; padding: 6px; }
+        .hamburger span { display: block; width: 22px; height: 2px; background: #aaa; border-radius: 2px; transition: all 0.2s; }
+        .hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+        .hamburger.open span:nth-child(2) { opacity: 0; }
+        .hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+        .mobile-menu { display: none; }
+        @media (max-width: 600px) {
+          .nav-pills { display: none; }
+          .hamburger { display: flex; }
+          .mobile-menu { display: block; position: absolute; top: 52px; left: 0; right: 0; background: #0e0e18; border-bottom: 1px solid #1a1a28; z-index: 49; }
+          .mobile-menu-item { display: block; width: 100%; background: transparent; border: none; border-bottom: 1px solid #1a1a28; color: #666; font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 2px; padding: 16px 24px; text-align: left; cursor: pointer; transition: all 0.15s; }
+          .mobile-menu-item:last-child { border-bottom: none; }
+          .mobile-menu-item.active { color: #00ff87; background: #00ff8710; }
+          .mobile-menu-item:hover:not(.active) { color: #aaa; background: #ffffff08; }
+          .mobile-menu-item .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: currentColor; margin-right: 12px; opacity: 0.6; }
         }
       `}</style>
 
-      <div className="topbar">
+      <div className="topbar" style={{ position: "sticky", top: 0, zIndex: 50 }}>
         <div className="topbar-inner">
           <span className="topbar-brand">FINANCE TOOLS</span>
+
+          {/* Desktop pills */}
           <nav className="nav-pills">
-            <button
-              type="button"
-              className={`nav-pill ${page === "simulator" ? "active" : ""}`}
-              onClick={() => navigateTo("simulator")}
-            >
-              PORTFOLIO SIMULATOR
-            </button>
-            <button
-              type="button"
-              className={`nav-pill ${page === "compound" ? "active" : ""}`}
-              onClick={() => navigateTo("compound")}
-            >
-              COMPOUND GROWTH
-            </button>
-            <button
-              type="button"
-              className={`nav-pill ${page === "retirement" ? "active" : ""}`}
-              onClick={() => navigateTo("retirement")}
-            >
-              RETIREMENT PLANNER
-            </button>
+            <button type="button" className={`nav-pill ${page === "simulator" ? "active" : ""}`} onClick={() => navigateTo("simulator")}>PORTFOLIO SIMULATOR</button>
+            <button type="button" className={`nav-pill ${page === "compound" ? "active" : ""}`} onClick={() => navigateTo("compound")}>COMPOUND GROWTH</button>
+            <button type="button" className={`nav-pill ${page === "retirement" ? "active" : ""}`} onClick={() => navigateTo("retirement")}>RETIREMENT PLANNER</button>
           </nav>
+
+          {/* Mobile hamburger */}
+          <button
+            type="button"
+            className={`hamburger ${menuOpen ? "open" : ""}`}
+            onClick={() => setMenuOpen((o) => !o)}
+            aria-label="Toggle menu"
+          >
+            <span />
+            <span />
+            <span />
+          </button>
         </div>
+
+        {/* Mobile dropdown */}
+        {menuOpen && (
+          <div className="mobile-menu">
+            {(
+              [
+                { key: "simulator", label: "Portfolio Simulator" },
+                { key: "compound", label: "Compound Growth" },
+                { key: "retirement", label: "Retirement Planner" },
+              ] as { key: Page; label: string }[]
+            ).map(({ key, label }) => (
+              <button
+                key={key}
+                type="button"
+                className={`mobile-menu-item ${page === key ? "active" : ""}`}
+                onClick={() => navigateTo(key)}
+              >
+                <span className="dot" />
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div style={{ padding: "32px 24px 64px" }}>
