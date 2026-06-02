@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import CompoundGrowth from "./CompoundGrowth";
+import RetirementDrawdown from "./RetirementDrawdown";
 import {
   CartesianGrid,
   Legend,
@@ -87,7 +88,7 @@ const CustomTooltip = ({
   );
 };
 
-type Page = "simulator" | "compound";
+type Page = "simulator" | "compound" | "retirement";
 
 const STORAGE_KEY = "portfolio-simulator-inputs";
 
@@ -95,7 +96,9 @@ export default function App() {
   const [page, setPage] = useState<Page>(() => {
     try {
       const saved = window.localStorage.getItem("finance-tools-page");
-      return saved === "compound" ? "compound" : "simulator";
+      if (saved === "compound") return "compound";
+      if (saved === "retirement") return "retirement";
+      return "simulator";
     } catch {
       return "simulator";
     }
@@ -356,6 +359,13 @@ export default function App() {
             >
               COMPOUND GROWTH
             </button>
+            <button
+              type="button"
+              className={`nav-pill ${page === "retirement" ? "active" : ""}`}
+              onClick={() => navigateTo("retirement")}
+            >
+              RETIREMENT PLANNER
+            </button>
           </nav>
         </div>
       </div>
@@ -371,17 +381,24 @@ export default function App() {
             color: "#fff",
           }}
         >
-          {page === "simulator" ? "PORTFOLIO SIMULATOR" : "COMPOUND GROWTH"}
+          {page === "simulator"
+            ? "PORTFOLIO SIMULATOR"
+            : page === "compound"
+              ? "COMPOUND GROWTH"
+              : "RETIREMENT DRAWDOWN PLANNER"}
         </h1>
         <p style={{ color: "#777", margin: "4px 0 0", fontSize: 13 }}>
           {page === "simulator"
             ? "Choose % withdrawal or fixed monthly amount · monthly contributions included"
-            : "Calculate how your investment grows with compound interest and regular contributions"}
+            : page === "compound"
+              ? "Calculate how your investment grows with compound interest and regular contributions"
+              : "Solve for the exact monthly withdrawal that draws your portfolio to $0 at your life expectancy"}
         </p>
       </header>
 
       <div style={{ maxWidth: 1200, margin: "0 auto" }}>
         {page === "compound" && <CompoundGrowth />}
+        {page === "retirement" && <RetirementDrawdown />}
         {page === "simulator" && (<>
         <div style={{ marginBottom: 16, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
           <span style={{ fontSize: 12, color: "#888", letterSpacing: 1.5 }}>WITHDRAWAL MODE</span>
