@@ -57,13 +57,14 @@ export default function PortfolioYield() {
         if (p.portfolioGHS !== undefined) setPortfolioGHS(p.portfolioGHS);
         if (p.rate !== undefined) setRate(p.rate);
         if (p.lastEdited) lastEdited.current = p.lastEdited;
+        if (p.calculated) setCalculated(p.calculated);
       }
     } catch { /* ignore */ }
   }, []);
 
-  const saveToStorage = (usd: number | "", ghs: number | "", r: number | "", le: LastEdited) => {
+  const saveToStorage = (usd: number | "", ghs: number | "", r: number | "", le: LastEdited, calc?: Calculated | null) => {
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ portfolioUSD: usd, portfolioGHS: ghs, rate: r, lastEdited: le }));
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ portfolioUSD: usd, portfolioGHS: ghs, rate: r, lastEdited: le, calculated: calc ?? calculated }));
     } catch { /* ignore */ }
   };
 
@@ -117,11 +118,9 @@ export default function PortfolioYield() {
 
   const handleCalculate = () => {
     if (!canCalculate) return;
-    setCalculated({
-      usd: draftUSD!,
-      ghs: draftGHS,
-      rate: draftRate,
-    });
+    const next: Calculated = { usd: draftUSD!, ghs: draftGHS, rate: draftRate };
+    setCalculated(next);
+    saveToStorage(portfolioUSD, portfolioGHS, rate, lastEdited.current, next);
   };
 
   const rows = calculated
