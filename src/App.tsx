@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import CompoundGrowth from "./CompoundGrowth";
 import RetirementDrawdown from "./RetirementDrawdown";
+import PortfolioYield from "./PortfolioYield";
 import {
   CartesianGrid,
   Legend,
@@ -88,7 +89,7 @@ const CustomTooltip = ({
   );
 };
 
-type Page = "simulator" | "compound" | "retirement";
+type Page = "simulator" | "compound" | "retirement" | "yield";
 
 const STORAGE_KEY = "portfolio-simulator-inputs";
 
@@ -98,6 +99,7 @@ export default function App() {
       const saved = window.localStorage.getItem("finance-tools-page");
       if (saved === "compound") return "compound";
       if (saved === "retirement") return "retirement";
+      if (saved === "yield") return "yield";
       return "simulator";
     } catch {
       return "simulator";
@@ -363,6 +365,7 @@ export default function App() {
             <button type="button" className={`nav-pill ${page === "simulator" ? "active" : ""}`} onClick={() => navigateTo("simulator")}>PORTFOLIO SIMULATOR</button>
             <button type="button" className={`nav-pill ${page === "compound" ? "active" : ""}`} onClick={() => navigateTo("compound")}>COMPOUND GROWTH</button>
             <button type="button" className={`nav-pill ${page === "retirement" ? "active" : ""}`} onClick={() => navigateTo("retirement")}>RETIREMENT PLANNER</button>
+            <button type="button" className={`nav-pill ${page === "yield" ? "active" : ""}`} onClick={() => navigateTo("yield")}>YIELD CALCULATOR</button>
           </nav>
 
           {/* Mobile hamburger */}
@@ -386,6 +389,7 @@ export default function App() {
                 { key: "simulator", label: "Portfolio Simulator" },
                 { key: "compound", label: "Compound Growth" },
                 { key: "retirement", label: "Retirement Planner" },
+                { key: "yield", label: "Yield Calculator" },
               ] as { key: Page; label: string }[]
             ).map(({ key, label }) => (
               <button
@@ -417,20 +421,25 @@ export default function App() {
             ? "PORTFOLIO SIMULATOR"
             : page === "compound"
               ? "COMPOUND GROWTH"
-              : "RETIREMENT DRAWDOWN PLANNER"}
+              : page === "retirement"
+                ? "RETIREMENT DRAWDOWN PLANNER"
+                : "PORTFOLIO YIELD CALCULATOR"}
         </h1>
         <p style={{ color: "#777", margin: "4px 0 0", fontSize: 13 }}>
           {page === "simulator"
             ? "Choose % withdrawal or fixed monthly amount · monthly contributions included"
             : page === "compound"
               ? "Calculate how your investment grows with compound interest and regular contributions"
-              : "Solve for the exact monthly withdrawal that draws your portfolio to $0 at your life expectancy"}
+              : page === "retirement"
+                ? "Solve for the exact monthly withdrawal that draws your portfolio to $0 at your life expectancy"
+                : "Enter USD or GHS value · see monthly and annual yield at 4–8% · live currency conversion"}
         </p>
       </header>
 
       <div style={{ maxWidth: 1200, margin: "0 auto" }}>
         {page === "compound" && <CompoundGrowth />}
         {page === "retirement" && <RetirementDrawdown />}
+        {page === "yield" && <PortfolioYield />}
         {page === "simulator" && (<>
         <div style={{ marginBottom: 16, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
           <span style={{ fontSize: 12, color: "#888", letterSpacing: 1.5 }}>WITHDRAWAL MODE</span>
