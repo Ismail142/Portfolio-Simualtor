@@ -146,10 +146,11 @@ export default function PortfolioYield() {
         .yield-input-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
         .yield-sub { font-size: 11px; color: #555; letter-spacing: 1px; margin-top: 2px; }
         .yield-table td { text-align: right; }
-        .yield-table td:first-child { text-align: left; }
+        .yield-table td:first-child { text-align: left; position: sticky; left: 0; background: #0a0a14; z-index: 1; }
         .yield-table th { text-align: right; }
-        .yield-table th:first-child { text-align: left; }
+        .yield-table th:first-child { text-align: left; position: sticky; left: 0; background: #0a0a14; z-index: 2; }
         .yield-table tr:hover td { background: #ffffff04; }
+        .yield-table tr:hover td:first-child { background: #0e0e1a; }
         .yield-table tr:last-child td { border-bottom: none; }
         .yield-cell-main { color: #fff; font-size: 13px; }
         .yield-cell-sub { color: #555; font-size: 10px; letter-spacing: 0.5px; margin-top: 2px; }
