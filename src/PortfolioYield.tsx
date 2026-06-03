@@ -100,97 +100,112 @@ export default function PortfolioYield() {
   const ghsValue = typeof portfolioGHS === "number" && portfolioGHS >= 0 ? portfolioGHS : null;
   const hasValue = usdValue !== null && usdValue > 0;
 
+  const rNum = typeof rate === "number" && rate > 0 ? rate : null;
+
   const rows = YIELD_RATES.map((pct) => {
     const annualUSD = usdValue !== null ? usdValue * (pct / 100) : null;
     const monthlyUSD = annualUSD !== null ? annualUSD / 12 : null;
-    const rNum = typeof rate === "number" && rate > 0 ? rate : null;
     const monthlyGHS = monthlyUSD !== null && rNum ? monthlyUSD * rNum : null;
-    return { pct, annualUSD, monthlyUSD, monthlyGHS };
+    const annualGHS = annualUSD !== null && rNum ? annualUSD * rNum : null;
+    return { pct, annualUSD, monthlyUSD, monthlyGHS, annualGHS };
   });
+
+  const ghsDisplay =
+    ghsValue !== null && ghsValue > 0
+      ? ghsValue
+      : usdValue !== null && rNum
+      ? usdValue * rNum
+      : null;
 
   return (
     <>
       <style>{`
-        .yield-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 20px; }
-        @media (max-width: 640px) { .yield-grid { grid-template-columns: 1fr; } }
-        .yield-input-card { background: #0e0e18; border: 1px solid #1a1a28; border-radius: 10px; padding: 16px 18px; }
-        .yield-input-label { font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 1.5px; color: #888; margin-bottom: 8px; }
-        .yield-input-field { width: 100%; background: transparent; border: none; outline: none; font-family: 'DM Mono', monospace; font-size: 22px; color: #00ff87; letter-spacing: 1px; padding: 0; box-sizing: border-box; }
-        .yield-input-field::placeholder { color: #333; }
-        .yield-input-hint { font-family: 'DM Mono', monospace; font-size: 10px; color: #555; margin-top: 4px; letter-spacing: 1px; }
-        .yield-table-wrap { background: #0e0e18; border: 1px solid #1a1a28; border-radius: 10px; overflow: hidden; }
-        .yield-table { width: 100%; border-collapse: collapse; }
-        .yield-table th { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 1.5px; color: #555; text-align: right; padding: 12px 20px; border-bottom: 1px solid #1a1a28; background: #07071088; }
+        .yield-input-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+        .yield-sub { font-size: 11px; color: #555; letter-spacing: 1px; margin-top: 2px; }
+        .yield-table td { text-align: right; }
+        .yield-table td:first-child { text-align: left; }
+        .yield-table th { text-align: right; }
         .yield-table th:first-child { text-align: left; }
-        .yield-table td { font-family: 'DM Mono', monospace; font-size: 13px; color: #aaa; text-align: right; padding: 14px 20px; border-bottom: 1px solid #0e0e1888; }
-        .yield-table td:first-child { text-align: left; font-size: 15px; font-weight: 600; }
-        .yield-table tr:last-child td { border-bottom: none; }
         .yield-table tr:hover td { background: #ffffff04; }
-        .yield-val { color: #fff; }
-        .yield-val-muted { color: #666; font-size: 11px; }
-        .yield-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
-        @media (max-width: 480px) { .yield-summary { grid-template-columns: 1fr; } }
-        .yield-summary-card { background: #0e0e18; border: 1px solid #1a1a28; border-radius: 10px; padding: 18px 20px; }
-        .yield-summary-label { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 2px; color: #555; margin-bottom: 8px; }
-        .yield-summary-value { font-family: 'DM Mono', monospace; font-size: 20px; color: #fff; letter-spacing: 1px; word-break: break-all; }
-        .yield-summary-sub { font-family: 'DM Mono', monospace; font-size: 11px; color: #444; margin-top: 4px; letter-spacing: 1px; }
-        .yield-empty { font-family: 'DM Mono', monospace; font-size: 12px; color: #444; letter-spacing: 1px; text-align: center; padding: 32px; }
-        @media (max-width: 600px) {
-          .yield-table th, .yield-table td { padding: 12px 12px; font-size: 11px; }
-          .yield-table td:first-child { font-size: 13px; }
-        }
+        .yield-table tr:last-child td { border-bottom: none; }
+        .yield-cell-main { color: #fff; font-size: 13px; }
+        .yield-cell-sub { color: #555; font-size: 10px; letter-spacing: 0.5px; margin-top: 2px; }
+        .yield-summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        @media (max-width: 480px) { .yield-summary-grid { grid-template-columns: 1fr; } }
+        .yield-empty-msg { font-size: 12px; color: #555; letter-spacing: 1px; text-align: center; padding: 40px 0; }
       `}</style>
 
-      <div className="yield-grid">
-        <div className="yield-input-card">
-          <div className="yield-input-label">PORTFOLIO VALUE (USD)</div>
+      {/* Input cards — same stat-card + slider-wrap + num-input as simulator */}
+      <div className="yield-input-grid" style={{ marginBottom: 0 }}>
+        <div className="stat-card slider-wrap">
+          <div className="slider-label">
+            <span>Portfolio Value (USD)</span>
+            <span className="slider-val">
+              {usdValue !== null ? fmtUSD(usdValue) : "—"}
+            </span>
+          </div>
           <input
-            className="yield-input-field"
+            className="num-input"
             type="number"
-            min="0"
+            min={0}
+            step={1000}
             placeholder="50000"
-            value={typeof portfolioUSD === "number" ? parseFloat(portfolioUSD.toFixed(2)) : ""}
+            value={typeof portfolioUSD === "number" ? parseFloat(portfolioUSD.toFixed(4)) : ""}
             onChange={(e) => handleUSDChange(e.target.value)}
           />
-          <div className="yield-input-hint">US DOLLARS · $</div>
+          <div className="yield-sub">US DOLLARS · editing updates GHS</div>
         </div>
 
-        <div className="yield-input-card">
-          <div className="yield-input-label">PORTFOLIO VALUE (GHS)</div>
+        <div className="stat-card slider-wrap">
+          <div className="slider-label">
+            <span>Portfolio Value (GHS)</span>
+            <span className="slider-val">
+              {ghsDisplay !== null ? fmtGHS(ghsDisplay) : "—"}
+            </span>
+          </div>
           <input
-            className="yield-input-field"
+            className="num-input"
             type="number"
-            min="0"
+            min={0}
+            step={100}
             placeholder="750000"
-            value={typeof portfolioGHS === "number" ? parseFloat(portfolioGHS.toFixed(2)) : ""}
+            value={typeof portfolioGHS === "number" ? parseFloat(portfolioGHS.toFixed(4)) : ""}
             onChange={(e) => handleGHSChange(e.target.value)}
           />
-          <div className="yield-input-hint">GHANAIAN CEDI · ₵</div>
+          <div className="yield-sub">GHANAIAN CEDI · editing updates USD</div>
         </div>
 
-        <div className="yield-input-card">
-          <div className="yield-input-label">USD → GHS RATE</div>
+        <div className="stat-card slider-wrap">
+          <div className="slider-label">
+            <span>USD → GHS Rate</span>
+            <span className="slider-val">
+              {typeof rate === "number" ? `×${rate}` : "—"}
+            </span>
+          </div>
           <input
-            className="yield-input-field"
+            className="num-input"
             type="number"
-            min="0"
-            step="0.01"
+            min={0}
+            step={0.1}
             placeholder="15"
             value={typeof rate === "number" ? rate : ""}
             onChange={(e) => handleRateChange(e.target.value)}
           />
-          <div className="yield-input-hint">1 USD = ? GHS</div>
+          <div className="yield-sub">1 USD = ? GHS</div>
         </div>
       </div>
 
-      <div className="yield-table-wrap">
+      {/* Yield table — same section + section-title + global table styles */}
+      <div className="section">
+        <p className="section-title">YIELD PROJECTIONS</p>
+
         {!hasValue ? (
-          <div className="yield-empty">Enter a portfolio value above to see yield projections</div>
+          <div className="yield-empty-msg">Enter a portfolio value above to see projections</div>
         ) : (
           <table className="yield-table">
             <thead>
               <tr>
-                <th>YIELD RATE</th>
+                <th>RATE</th>
                 <th>MONTHLY (USD)</th>
                 <th>MONTHLY (GHS)</th>
                 <th>ANNUAL (USD)</th>
@@ -200,33 +215,33 @@ export default function PortfolioYield() {
               {rows.map(({ pct, annualUSD, monthlyUSD, monthlyGHS }) => (
                 <tr key={pct}>
                   <td>
-                    <span style={{ color: RATE_COLORS[pct], fontFamily: "'DM Mono', monospace" }}>
+                    <span style={{ color: RATE_COLORS[pct], fontWeight: 600, fontSize: 15 }}>
                       {pct}%
                     </span>
                   </td>
                   <td>
                     {monthlyUSD !== null ? (
                       <>
-                        <span className="yield-val">{fmtUSD(monthlyUSD)}</span>
-                        <div className="yield-val-muted">{fmtFull(monthlyUSD, "USD")}/mo</div>
+                        <div className="yield-cell-main">{fmtUSD(monthlyUSD)}</div>
+                        <div className="yield-cell-sub">{fmtFull(monthlyUSD, "USD")}/mo</div>
                       </>
-                    ) : <span className="yield-val-muted">—</span>}
+                    ) : <span style={{ color: "#444" }}>—</span>}
                   </td>
                   <td>
                     {monthlyGHS !== null ? (
                       <>
-                        <span className="yield-val">{fmtGHS(monthlyGHS)}</span>
-                        <div className="yield-val-muted">{fmtFull(monthlyGHS, "GHS")}/mo</div>
+                        <div className="yield-cell-main">{fmtGHS(monthlyGHS)}</div>
+                        <div className="yield-cell-sub">{fmtFull(monthlyGHS, "GHS")}/mo</div>
                       </>
-                    ) : <span className="yield-val-muted">—</span>}
+                    ) : <span style={{ color: "#444" }}>—</span>}
                   </td>
                   <td>
                     {annualUSD !== null ? (
                       <>
-                        <span className="yield-val">{fmtUSD(annualUSD)}</span>
-                        <div className="yield-val-muted">{fmtFull(annualUSD, "USD")}/yr</div>
+                        <div className="yield-cell-main">{fmtUSD(annualUSD)}</div>
+                        <div className="yield-cell-sub">{fmtFull(annualUSD, "USD")}/yr</div>
                       </>
-                    ) : <span className="yield-val-muted">—</span>}
+                    ) : <span style={{ color: "#444" }}>—</span>}
                   </td>
                 </tr>
               ))}
@@ -235,23 +250,61 @@ export default function PortfolioYield() {
         )}
       </div>
 
+      {/* Summary cards — same stat-card as simulator */}
       {hasValue && (
-        <div className="yield-summary">
-          <div className="yield-summary-card">
-            <div className="yield-summary-label">TOTAL PORTFOLIO — USD</div>
-            <div className="yield-summary-value">{fmtFull(usdValue!, "USD")}</div>
-            <div className="yield-summary-sub">US DOLLARS</div>
-          </div>
-          <div className="yield-summary-card">
-            <div className="yield-summary-label">TOTAL PORTFOLIO — GHS</div>
-            <div className="yield-summary-value">
-              {ghsValue !== null && ghsValue > 0
-                ? fmtFull(ghsValue, "GHS")
-                : typeof rate === "number" && rate > 0
-                ? fmtFull(usdValue! * rate, "GHS")
-                : "—"}
+        <div className="yield-summary-grid" style={{ marginTop: 16 }}>
+          <div className="stat-card">
+            <div
+              style={{
+                fontSize: 11,
+                color: "#555",
+                letterSpacing: 2,
+                fontFamily: "'DM Mono', monospace",
+                marginBottom: 10,
+              }}
+            >
+              TOTAL PORTFOLIO — USD
             </div>
-            <div className="yield-summary-sub">GHANAIAN CEDI</div>
+            <div
+              style={{
+                fontFamily: "'Bebas Neue', sans-serif",
+                fontSize: 28,
+                color: "#00ff87",
+                letterSpacing: 2,
+              }}
+            >
+              {fmtFull(usdValue!, "USD")}
+            </div>
+            <div style={{ fontSize: 11, color: "#444", letterSpacing: 1, marginTop: 4 }}>
+              US DOLLARS
+            </div>
+          </div>
+
+          <div className="stat-card">
+            <div
+              style={{
+                fontSize: 11,
+                color: "#555",
+                letterSpacing: 2,
+                fontFamily: "'DM Mono', monospace",
+                marginBottom: 10,
+              }}
+            >
+              TOTAL PORTFOLIO — GHS
+            </div>
+            <div
+              style={{
+                fontFamily: "'Bebas Neue', sans-serif",
+                fontSize: 28,
+                color: "#00d4ff",
+                letterSpacing: 2,
+              }}
+            >
+              {ghsDisplay !== null ? fmtFull(ghsDisplay, "GHS") : "—"}
+            </div>
+            <div style={{ fontSize: 11, color: "#444", letterSpacing: 1, marginTop: 4 }}>
+              GHANAIAN CEDI
+            </div>
           </div>
         </div>
       )}
