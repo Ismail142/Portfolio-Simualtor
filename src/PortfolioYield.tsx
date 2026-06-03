@@ -156,6 +156,8 @@ export default function PortfolioYield() {
         .yield-summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
         @media (max-width: 480px) { .yield-summary-grid { grid-template-columns: 1fr; } }
         .yield-empty-msg { font-size: 12px; color: #555; letter-spacing: 1px; text-align: center; padding: 40px 0; }
+        .yield-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .yield-table { min-width: 480px; }
       `}</style>
 
       {/* Input cards */}
@@ -239,6 +241,7 @@ export default function PortfolioYield() {
         <>
           <div className="section">
             <p className="section-title">YIELD PROJECTIONS</p>
+            <div className="yield-table-scroll">
             <table className="yield-table">
               <thead>
                 <tr>
@@ -276,6 +279,7 @@ export default function PortfolioYield() {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
 
           <div className="yield-summary-grid" style={{ marginTop: 16 }}>
