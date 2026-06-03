@@ -34,11 +34,19 @@ function fmtFull(n: number, currency: "USD" | "GHS") {
 
 type LastEdited = "usd" | "ghs";
 
+type Calculated = {
+  usd: number;
+  ghs: number | null;
+  rate: number | null;
+};
+
 export default function PortfolioYield() {
   const [portfolioUSD, setPortfolioUSD] = useState<number | "">(50000);
   const [portfolioGHS, setPortfolioGHS] = useState<number | "">("");
   const [rate, setRate] = useState<number | "">(15);
   const lastEdited = useRef<LastEdited>("usd");
+
+  const [calculated, setCalculated] = useState<Calculated | null>(null);
 
   useEffect(() => {
     try {
@@ -96,26 +104,42 @@ export default function PortfolioYield() {
     }
   };
 
-  const usdValue = typeof portfolioUSD === "number" && portfolioUSD >= 0 ? portfolioUSD : null;
-  const ghsValue = typeof portfolioGHS === "number" && portfolioGHS >= 0 ? portfolioGHS : null;
-  const hasValue = usdValue !== null && usdValue > 0;
+  const draftUSD = typeof portfolioUSD === "number" && portfolioUSD > 0 ? portfolioUSD : null;
+  const draftGHS = typeof portfolioGHS === "number" && portfolioGHS > 0 ? portfolioGHS : null;
+  const draftRate = typeof rate === "number" && rate > 0 ? rate : null;
 
-  const rNum = typeof rate === "number" && rate > 0 ? rate : null;
+  const canCalculate = draftUSD !== null;
 
-  const rows = YIELD_RATES.map((pct) => {
-    const annualUSD = usdValue !== null ? usdValue * (pct / 100) : null;
-    const monthlyUSD = annualUSD !== null ? annualUSD / 12 : null;
-    const monthlyGHS = monthlyUSD !== null && rNum ? monthlyUSD * rNum : null;
-    const annualGHS = annualUSD !== null && rNum ? annualUSD * rNum : null;
-    return { pct, annualUSD, monthlyUSD, monthlyGHS, annualGHS };
-  });
+  const isDirty =
+    calculated !== null &&
+    (calculated.usd !== draftUSD ||
+      calculated.rate !== draftRate);
 
-  const ghsDisplay =
-    ghsValue !== null && ghsValue > 0
-      ? ghsValue
-      : usdValue !== null && rNum
-      ? usdValue * rNum
-      : null;
+  const handleCalculate = () => {
+    if (!canCalculate) return;
+    setCalculated({
+      usd: draftUSD!,
+      ghs: draftGHS,
+      rate: draftRate,
+    });
+  };
+
+  const rows = calculated
+    ? YIELD_RATES.map((pct) => {
+        const annualUSD = calculated.usd * (pct / 100);
+        const monthlyUSD = annualUSD / 12;
+        const monthlyGHS = calculated.rate ? monthlyUSD * calculated.rate : null;
+        const annualGHS = calculated.rate ? annualUSD * calculated.rate : null;
+        return { pct, annualUSD, monthlyUSD, monthlyGHS, annualGHS };
+      })
+    : [];
+
+  const calcGHSDisplay =
+    calculated?.ghs ??
+    (calculated?.usd && calculated?.rate ? calculated.usd * calculated.rate : null);
+
+  const draftGHSDisplay =
+    draftGHS ?? (draftUSD && draftRate ? draftUSD * draftRate : null);
 
   return (
     <>
@@ -135,13 +159,13 @@ export default function PortfolioYield() {
         .yield-empty-msg { font-size: 12px; color: #555; letter-spacing: 1px; text-align: center; padding: 40px 0; }
       `}</style>
 
-      {/* Input cards — same stat-card + slider-wrap + num-input as simulator */}
+      {/* Input cards */}
       <div className="yield-input-grid" style={{ marginBottom: 0 }}>
         <div className="stat-card slider-wrap">
           <div className="slider-label">
             <span>Portfolio Value (USD)</span>
             <span className="slider-val">
-              {usdValue !== null ? fmtUSD(usdValue) : "—"}
+              {draftUSD !== null ? fmtUSD(draftUSD) : "—"}
             </span>
           </div>
           <input
@@ -160,7 +184,7 @@ export default function PortfolioYield() {
           <div className="slider-label">
             <span>Portfolio Value (GHS)</span>
             <span className="slider-val">
-              {ghsDisplay !== null ? fmtGHS(ghsDisplay) : "—"}
+              {draftGHSDisplay !== null ? fmtGHS(draftGHSDisplay) : "—"}
             </span>
           </div>
           <input
@@ -179,7 +203,7 @@ export default function PortfolioYield() {
           <div className="slider-label">
             <span>USD → GHS Rate</span>
             <span className="slider-val">
-              {typeof rate === "number" ? `×${rate}` : "—"}
+              {draftRate !== null ? `×${rate}` : "—"}
             </span>
           </div>
           <input
@@ -195,117 +219,97 @@ export default function PortfolioYield() {
         </div>
       </div>
 
-      {/* Yield table — same section + section-title + global table styles */}
-      <div className="section">
-        <p className="section-title">YIELD PROJECTIONS</p>
-
-        {!hasValue ? (
-          <div className="yield-empty-msg">Enter a portfolio value above to see projections</div>
-        ) : (
-          <table className="yield-table">
-            <thead>
-              <tr>
-                <th>RATE</th>
-                <th>MONTHLY (USD)</th>
-                <th>MONTHLY (GHS)</th>
-                <th>ANNUAL (USD)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map(({ pct, annualUSD, monthlyUSD, monthlyGHS }) => (
-                <tr key={pct}>
-                  <td>
-                    <span style={{ color: RATE_COLORS[pct], fontWeight: 600, fontSize: 15 }}>
-                      {pct}%
-                    </span>
-                  </td>
-                  <td>
-                    {monthlyUSD !== null ? (
-                      <>
-                        <div className="yield-cell-main">{fmtUSD(monthlyUSD)}</div>
-                        <div className="yield-cell-sub">{fmtFull(monthlyUSD, "USD")}/mo</div>
-                      </>
-                    ) : <span style={{ color: "#444" }}>—</span>}
-                  </td>
-                  <td>
-                    {monthlyGHS !== null ? (
-                      <>
-                        <div className="yield-cell-main">{fmtGHS(monthlyGHS)}</div>
-                        <div className="yield-cell-sub">{fmtFull(monthlyGHS, "GHS")}/mo</div>
-                      </>
-                    ) : <span style={{ color: "#444" }}>—</span>}
-                  </td>
-                  <td>
-                    {annualUSD !== null ? (
-                      <>
-                        <div className="yield-cell-main">{fmtUSD(annualUSD)}</div>
-                        <div className="yield-cell-sub">{fmtFull(annualUSD, "USD")}/yr</div>
-                      </>
-                    ) : <span style={{ color: "#444" }}>—</span>}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* Calculate button row */}
+      <div className="calc-bar">
+        {isDirty && (
+          <span className="calc-hint">Inputs changed — recalculate to update</span>
         )}
+        <button
+          type="button"
+          className="calc-btn"
+          disabled={!canCalculate}
+          onClick={handleCalculate}
+          style={{ marginLeft: "auto" }}
+        >
+          CALCULATE
+        </button>
       </div>
 
-      {/* Summary cards — same stat-card as simulator */}
-      {hasValue && (
-        <div className="yield-summary-grid" style={{ marginTop: 16 }}>
-          <div className="stat-card">
-            <div
-              style={{
-                fontSize: 11,
-                color: "#555",
-                letterSpacing: 2,
-                fontFamily: "'DM Mono', monospace",
-                marginBottom: 10,
-              }}
-            >
-              TOTAL PORTFOLIO — USD
-            </div>
-            <div
-              style={{
-                fontFamily: "'Bebas Neue', sans-serif",
-                fontSize: 28,
-                color: "#00ff87",
-                letterSpacing: 2,
-              }}
-            >
-              {fmtFull(usdValue!, "USD")}
-            </div>
-            <div style={{ fontSize: 11, color: "#444", letterSpacing: 1, marginTop: 4 }}>
-              US DOLLARS
-            </div>
+      {/* Results — only shown after first calculate */}
+      {calculated && (
+        <>
+          <div className="section">
+            <p className="section-title">YIELD PROJECTIONS</p>
+            <table className="yield-table">
+              <thead>
+                <tr>
+                  <th>RATE</th>
+                  <th>MONTHLY (USD)</th>
+                  <th>MONTHLY (GHS)</th>
+                  <th>ANNUAL (USD)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map(({ pct, annualUSD, monthlyUSD, monthlyGHS }) => (
+                  <tr key={pct}>
+                    <td>
+                      <span style={{ color: RATE_COLORS[pct], fontWeight: 600, fontSize: 15 }}>
+                        {pct}%
+                      </span>
+                    </td>
+                    <td>
+                      <div className="yield-cell-main">{fmtUSD(monthlyUSD)}</div>
+                      <div className="yield-cell-sub">{fmtFull(monthlyUSD, "USD")}/mo</div>
+                    </td>
+                    <td>
+                      {monthlyGHS !== null ? (
+                        <>
+                          <div className="yield-cell-main">{fmtGHS(monthlyGHS)}</div>
+                          <div className="yield-cell-sub">{fmtFull(monthlyGHS, "GHS")}/mo</div>
+                        </>
+                      ) : <span style={{ color: "#444" }}>—</span>}
+                    </td>
+                    <td>
+                      <div className="yield-cell-main">{fmtUSD(annualUSD)}</div>
+                      <div className="yield-cell-sub">{fmtFull(annualUSD, "USD")}/yr</div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
 
-          <div className="stat-card">
-            <div
-              style={{
-                fontSize: 11,
-                color: "#555",
-                letterSpacing: 2,
-                fontFamily: "'DM Mono', monospace",
-                marginBottom: 10,
-              }}
-            >
-              TOTAL PORTFOLIO — GHS
+          <div className="yield-summary-grid" style={{ marginTop: 16 }}>
+            <div className="stat-card">
+              <div style={{ fontSize: 11, color: "#555", letterSpacing: 2, fontFamily: "'DM Mono', monospace", marginBottom: 10 }}>
+                TOTAL PORTFOLIO — USD
+              </div>
+              <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, color: "#00ff87", letterSpacing: 2 }}>
+                {fmtFull(calculated.usd, "USD")}
+              </div>
+              <div style={{ fontSize: 11, color: "#444", letterSpacing: 1, marginTop: 4 }}>
+                US DOLLARS
+              </div>
             </div>
-            <div
-              style={{
-                fontFamily: "'Bebas Neue', sans-serif",
-                fontSize: 28,
-                color: "#00d4ff",
-                letterSpacing: 2,
-              }}
-            >
-              {ghsDisplay !== null ? fmtFull(ghsDisplay, "GHS") : "—"}
-            </div>
-            <div style={{ fontSize: 11, color: "#444", letterSpacing: 1, marginTop: 4 }}>
-              GHANAIAN CEDI
+
+            <div className="stat-card">
+              <div style={{ fontSize: 11, color: "#555", letterSpacing: 2, fontFamily: "'DM Mono', monospace", marginBottom: 10 }}>
+                TOTAL PORTFOLIO — GHS
+              </div>
+              <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, color: "#00d4ff", letterSpacing: 2 }}>
+                {calcGHSDisplay !== null ? fmtFull(calcGHSDisplay, "GHS") : "—"}
+              </div>
+              <div style={{ fontSize: 11, color: "#444", letterSpacing: 1, marginTop: 4 }}>
+                GHANAIAN CEDI
+              </div>
             </div>
           </div>
+        </>
+      )}
+
+      {!calculated && (
+        <div className="section">
+          <div className="yield-empty-msg">Enter your portfolio value and press CALCULATE to see projections</div>
         </div>
       )}
     </>
