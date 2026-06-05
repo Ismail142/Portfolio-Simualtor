@@ -227,7 +227,7 @@ export default function PortfolioYield() {
         <button
           type="button"
           className="calc-btn"
-          disabled={!canCalculate}
+          disabled={!canCalculate || (calculated !== null && !isDirty)}
           onClick={handleCalculate}
         >
           CALCULATE
