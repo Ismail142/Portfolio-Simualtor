@@ -223,15 +223,12 @@ export default function PortfolioYield() {
 
       {/* Calculate button row */}
       <div className="calc-bar">
-        {isDirty && (
-          <span className="calc-hint">Inputs changed — recalculate to update</span>
-        )}
+        <span className="calc-hint">{isDirty ? "Unapplied changes — press Calculate" : ""}</span>
         <button
           type="button"
           className="calc-btn"
-          disabled={!canCalculate}
+          disabled={!canCalculate || (calculated !== null && !isDirty)}
           onClick={handleCalculate}
-          style={{ marginLeft: "auto" }}
         >
           CALCULATE
         </button>
