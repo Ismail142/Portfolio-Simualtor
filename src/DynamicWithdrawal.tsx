@@ -324,9 +324,8 @@ export default function DynamicWithdrawal() {
     years > 0 && portfolio > 0
       ? (Math.pow(finalBalance / portfolio, 1 / years) - 1) * 100
       : 0;
-  // Average monthly return (geometric)
-  const avgMonthlyReturn =
-    years > 0 ? (Math.pow(1 + cagr / 100, 1 / 12) - 1) * 100 : 0;
+  // Average monthly withdrawal
+  const avgMonthlyWithdrawal = avgWithdrawal / 12;
 
   const retainedPct = (finalBalance / portfolio) * 100;
   const survivalStatus: "strong" | "survived" | "atrisk" | "depleted" =
@@ -634,7 +633,7 @@ export default function DynamicWithdrawal() {
                 </div>
               </div>
 
-              {/* Avg monthly return card */}
+              {/* Avg monthly withdrawal card */}
               <div
                 style={{
                   background: "#0e0e18",
@@ -644,20 +643,25 @@ export default function DynamicWithdrawal() {
                 }}
               >
                 <div style={{ fontSize: 11, color: "#666", letterSpacing: 1.5, marginBottom: 6 }}>
-                  AVG MONTHLY RETURN
+                  AVG MONTHLY WITHDRAWAL
                 </div>
                 <div
                   style={{
                     fontFamily: "'Bebas Neue', sans-serif",
                     fontSize: 32,
-                    color: avgMonthlyReturn >= 0 ? "#8338ec" : "#ff6b6b",
+                    color: "#8338ec",
                     lineHeight: 1,
                   }}
                 >
-                  {avgMonthlyReturn >= 0 ? "+" : ""}{avgMonthlyReturn.toFixed(2)}%
+                  {fmt(avgMonthlyWithdrawal)}
                 </div>
+                {exchangeRate && (
+                  <div style={{ fontSize: 12, color: "#888", marginTop: 4 }}>
+                    {fmtGHS(avgMonthlyWithdrawal, exchangeRate)}/mo
+                  </div>
+                )}
                 <div style={{ fontSize: 11, color: "#555", marginTop: 6 }}>
-                  Geometric monthly equivalent
+                  Avg annual ÷ 12
                 </div>
               </div>
 
