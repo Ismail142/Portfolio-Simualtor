@@ -734,8 +734,7 @@ export default function DynamicWithdrawal() {
                 }}
               >
                 {(() => {
-                  const totalGenerated = finalBalance + totalWithdrawn;
-                  const perfPct = ((totalGenerated - portfolio) / portfolio) * 100;
+                  const perfPct = ((finalBalance - portfolio) / portfolio) * 100;
                   const isPos = perfPct >= 0;
                   return (
                     <>
@@ -753,15 +752,15 @@ export default function DynamicWithdrawal() {
                         {isPos ? "+" : ""}{perfPct.toFixed(1)}%
                       </div>
                       <div style={{ fontSize: 12, color: "#aaa", marginTop: 6 }}>
-                        {fmt(totalGenerated)} total value generated
+                        {fmt(portfolio)} → {fmt(finalBalance)}
                       </div>
                       {exchangeRate && (
                         <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>
-                          {fmtGHS(totalGenerated, exchangeRate)}
+                          {fmtGHS(portfolio, exchangeRate)} → {fmtGHS(finalBalance, exchangeRate)}
                         </div>
                       )}
                       <div style={{ fontSize: 11, color: "#555", marginTop: 4 }}>
-                        Final balance + all withdrawals vs start
+                        Initial value vs final balance
                       </div>
                     </>
                   );
