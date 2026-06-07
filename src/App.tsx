@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import CompoundGrowth from "./CompoundGrowth";
 import RetirementDrawdown from "./RetirementDrawdown";
 import PortfolioYield from "./PortfolioYield";
+import DynamicWithdrawal from "./DynamicWithdrawal";
 import {
   CartesianGrid,
   Legend,
@@ -89,7 +90,7 @@ const CustomTooltip = ({
   );
 };
 
-type Page = "simulator" | "compound" | "retirement" | "yield";
+type Page = "simulator" | "compound" | "retirement" | "yield" | "dynamic";
 
 const STORAGE_KEY = "portfolio-simulator-inputs";
 
@@ -100,6 +101,7 @@ export default function App() {
       if (saved === "compound") return "compound";
       if (saved === "retirement") return "retirement";
       if (saved === "yield") return "yield";
+      if (saved === "dynamic") return "dynamic";
       return "simulator";
     } catch {
       return "simulator";
@@ -366,6 +368,7 @@ export default function App() {
             <button type="button" className={`nav-pill ${page === "compound" ? "active" : ""}`} onClick={() => navigateTo("compound")}>COMPOUND GROWTH</button>
             <button type="button" className={`nav-pill ${page === "retirement" ? "active" : ""}`} onClick={() => navigateTo("retirement")}>RETIREMENT PLANNER</button>
             <button type="button" className={`nav-pill ${page === "yield" ? "active" : ""}`} onClick={() => navigateTo("yield")}>YIELD CALCULATOR</button>
+            <button type="button" className={`nav-pill ${page === "dynamic" ? "active" : ""}`} onClick={() => navigateTo("dynamic")}>DYNAMIC WITHDRAWAL</button>
           </nav>
 
           {/* Mobile hamburger */}
@@ -390,6 +393,7 @@ export default function App() {
                 { key: "compound", label: "Compound Growth" },
                 { key: "retirement", label: "Retirement Planner" },
                 { key: "yield", label: "Yield Calculator" },
+                { key: "dynamic", label: "Dynamic Withdrawal" },
               ] as { key: Page; label: string }[]
             ).map(({ key, label }) => (
               <button
@@ -423,7 +427,9 @@ export default function App() {
               ? "COMPOUND GROWTH"
               : page === "retirement"
                 ? "RETIREMENT DRAWDOWN PLANNER"
-                : "PORTFOLIO YIELD CALCULATOR"}
+                : page === "yield"
+                  ? "PORTFOLIO YIELD CALCULATOR"
+                  : "DYNAMIC WITHDRAWAL SIMULATOR"}
         </h1>
         <p style={{ color: "#777", margin: "4px 0 0", fontSize: 13 }}>
           {page === "simulator"
@@ -432,7 +438,9 @@ export default function App() {
               ? "Calculate how your investment grows with compound interest and regular contributions"
               : page === "retirement"
                 ? "Solve for the exact monthly withdrawal that draws your portfolio to $0 at your life expectancy"
-                : "Enter USD or GHS value · see monthly and annual yield at 4–8% · live currency conversion"}
+                : page === "yield"
+                  ? "Enter USD or GHS value · see monthly and annual yield at 4–8% · live currency conversion"
+                  : "Test dynamic guardrails withdrawal against real S&P 500 returns 1985–2026 · USD & GHS"}
         </p>
       </header>
 
@@ -440,6 +448,7 @@ export default function App() {
         {page === "compound" && <CompoundGrowth />}
         {page === "retirement" && <RetirementDrawdown />}
         {page === "yield" && <PortfolioYield />}
+        {page === "dynamic" && <DynamicWithdrawal />}
         {page === "simulator" && (<>
         <div style={{ marginBottom: 16, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
           <span style={{ fontSize: 12, color: "#888", letterSpacing: 1.5 }}>WITHDRAWAL MODE</span>
