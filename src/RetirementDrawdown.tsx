@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -97,16 +97,20 @@ const CustomTooltip = ({
 
 export default function RetirementDrawdown() {
   const [draftPortfolio, setDraftPortfolio] = useState<number | "">(500000);
+  const [draftPortfolioGHS, setDraftPortfolioGHS] = useState<number | "">("");
+  const [draftExchangeRate, setDraftExchangeRate] = useState<number | "">(15);
   const [draftRate, setDraftRate] = useState<number | "">(6);
   const [draftAge, setDraftAge] = useState<number | "">(65);
   const [draftLifeExpectancy, setDraftLifeExpectancy] = useState<number | "">(90);
   const [draftContribution, setDraftContribution] = useState<number | "">(0);
+  const lastEdited = useRef<"usd" | "ghs">("usd");
 
   const [portfolio, setPortfolio] = useState(500000);
   const [rate, setRate] = useState(6);
   const [age, setAge] = useState(65);
   const [lifeExpectancy, setLifeExpectancy] = useState(90);
   const [contribution, setContribution] = useState(0);
+  const [exchangeRate, setExchangeRate] = useState<number | null>(null);
   const [calculated, setCalculated] = useState(false);
 
   useEffect(() => {
@@ -116,16 +120,22 @@ export default function RetirementDrawdown() {
       const s = JSON.parse(raw) as {
         portfolio?: number; rate?: number; age?: number;
         lifeExpectancy?: number; contribution?: number;
+        exchangeRate?: number; portfolioGHS?: number;
       };
       const p = Math.max(1, Number(s.portfolio) || 1);
       const r = Math.max(0, Number(s.rate) || 0);
       const a = Math.max(1, Math.floor(Number(s.age) || 1));
       const le = Math.max(a + 1, Math.floor(Number(s.lifeExpectancy) || a + 1));
       const c = Math.max(0, Number(s.contribution) || 0);
+      const er = s.exchangeRate && s.exchangeRate > 0 ? s.exchangeRate : null;
+      const ghs = s.portfolioGHS && s.portfolioGHS > 0 ? s.portfolioGHS : er ? p * er : "";
       setDraftPortfolio(p); setDraftRate(r); setDraftAge(a);
       setDraftLifeExpectancy(le); setDraftContribution(c);
+      if (er) setDraftExchangeRate(er);
+      if (ghs) setDraftPortfolioGHS(ghs);
       setPortfolio(p); setRate(r); setAge(a);
       setLifeExpectancy(le); setContribution(c);
+      if (er) setExchangeRate(er);
       setCalculated(true);
     } catch { /* ignore */ }
   }, []);
@@ -135,7 +145,35 @@ export default function RetirementDrawdown() {
     Number(draftRate) !== rate ||
     Number(draftAge) !== age ||
     Number(draftLifeExpectancy) !== lifeExpectancy ||
-    Number(draftContribution) !== contribution;
+    Number(draftContribution) !== contribution ||
+    (Number(draftExchangeRate) || null) !== exchangeRate;
+
+  const handleUSDPortfolioChange = (val: string) => {
+    const n = val === "" ? "" : +val;
+    setDraftPortfolio(n);
+    lastEdited.current = "usd";
+    const er = typeof draftExchangeRate === "number" && draftExchangeRate > 0 ? draftExchangeRate : null;
+    setDraftPortfolioGHS(typeof n === "number" && er ? n * er : "");
+  };
+
+  const handleGHSPortfolioChange = (val: string) => {
+    const n = val === "" ? "" : +val;
+    setDraftPortfolioGHS(n);
+    lastEdited.current = "ghs";
+    const er = typeof draftExchangeRate === "number" && draftExchangeRate > 0 ? draftExchangeRate : null;
+    setDraftPortfolio(typeof n === "number" && er ? n / er : "");
+  };
+
+  const handleExchangeRateChange = (val: string) => {
+    const er = val === "" ? "" : +val;
+    setDraftExchangeRate(er);
+    const erNum = typeof er === "number" && er > 0 ? er : null;
+    if (lastEdited.current === "usd" && typeof draftPortfolio === "number" && erNum) {
+      setDraftPortfolioGHS(draftPortfolio * erNum);
+    } else if (lastEdited.current === "ghs" && typeof draftPortfolioGHS === "number" && erNum) {
+      setDraftPortfolio(draftPortfolioGHS / erNum);
+    }
+  };
 
   const handleCalculate = () => {
     const p = Math.max(1, Math.floor(Number(draftPortfolio) || 1));
@@ -143,14 +181,22 @@ export default function RetirementDrawdown() {
     const a = Math.max(1, Math.floor(Number(draftAge) || 1));
     const le = Math.max(a + 1, Math.floor(Number(draftLifeExpectancy) || a + 1));
     const c = Math.max(0, Math.floor(Number(draftContribution) || 0));
+    const er = typeof draftExchangeRate === "number" && draftExchangeRate > 0 ? draftExchangeRate : null;
+    const ghsVal = typeof draftPortfolioGHS === "number" && draftPortfolioGHS > 0
+      ? draftPortfolioGHS
+      : er ? p * er : null;
     setDraftPortfolio(p); setDraftRate(r); setDraftAge(a);
     setDraftLifeExpectancy(le); setDraftContribution(c);
+    if (er) setDraftExchangeRate(er);
+    if (ghsVal) setDraftPortfolioGHS(ghsVal);
     setPortfolio(p); setRate(r); setAge(a);
     setLifeExpectancy(le); setContribution(c);
+    setExchangeRate(er);
     setCalculated(true);
     try {
       window.localStorage.setItem(RD_STORAGE_KEY, JSON.stringify({
         portfolio: p, rate: r, age: a, lifeExpectancy: le, contribution: c,
+        exchangeRate: er, portfolioGHS: ghsVal,
       }));
     } catch { /* ignore */ }
   };
@@ -186,7 +232,7 @@ export default function RetirementDrawdown() {
       >
         <div className="stat-card slider-wrap">
           <div className="slider-label">
-            <span>Current Portfolio ($)</span>
+            <span>Current Portfolio (USD)</span>
             <span className="slider-val">{fmt(Number(draftPortfolio) || 0)}</span>
           </div>
           <input
@@ -195,7 +241,49 @@ export default function RetirementDrawdown() {
             min={1}
             step={10000}
             value={draftPortfolio}
-            onChange={(e) => setDraftPortfolio(e.target.value === "" ? "" : +e.target.value)}
+            onChange={(e) => handleUSDPortfolioChange(e.target.value)}
+          />
+        </div>
+
+        <div className="stat-card slider-wrap">
+          <div className="slider-label">
+            <span>Current Portfolio (GHS)</span>
+            <span className="slider-val">
+              {typeof draftPortfolioGHS === "number" && draftPortfolioGHS > 0
+                ? `₵${Math.round(draftPortfolioGHS).toLocaleString()}`
+                : typeof draftPortfolio === "number" && typeof draftExchangeRate === "number" && draftExchangeRate > 0
+                ? `₵${Math.round(draftPortfolio * draftExchangeRate).toLocaleString()}`
+                : "—"}
+            </span>
+          </div>
+          <input
+            className="num-input"
+            type="number"
+            min={1}
+            step={10000}
+            placeholder="e.g. 7500000"
+            value={typeof draftPortfolioGHS === "number" && draftPortfolioGHS > 0
+              ? parseFloat(draftPortfolioGHS.toFixed(2))
+              : ""}
+            onChange={(e) => handleGHSPortfolioChange(e.target.value)}
+          />
+        </div>
+
+        <div className="stat-card slider-wrap">
+          <div className="slider-label">
+            <span>USD → GHS Rate</span>
+            <span className="slider-val">
+              {typeof draftExchangeRate === "number" ? `×${draftExchangeRate}` : "—"}
+            </span>
+          </div>
+          <input
+            className="num-input"
+            type="number"
+            min={0}
+            step={0.1}
+            placeholder="15"
+            value={typeof draftExchangeRate === "number" ? draftExchangeRate : ""}
+            onChange={(e) => handleExchangeRateChange(e.target.value)}
           />
         </div>
 
@@ -295,6 +383,7 @@ export default function RetirementDrawdown() {
                 {
                   label: "MONTHLY WITHDRAWAL",
                   value: fmtExact(monthlyWithdrawal),
+                  ghsValue: exchangeRate ? `₵${(monthlyWithdrawal * exchangeRate).toLocaleString("en-US", { maximumFractionDigits: 0 })}/mo` : null,
                   sub: "Take this every month",
                   color: "#00ff87",
                   big: true,
@@ -302,6 +391,7 @@ export default function RetirementDrawdown() {
                 {
                   label: "ANNUAL WITHDRAWAL",
                   value: fmt(annualWithdrawal),
+                  ghsValue: exchangeRate ? `₵${(annualWithdrawal * exchangeRate).toLocaleString("en-US", { maximumFractionDigits: 0 })}/yr` : null,
                   sub: "Per year total",
                   color: "#00d4ff",
                   big: false,
@@ -309,6 +399,7 @@ export default function RetirementDrawdown() {
                 {
                   label: "LIFETIME WITHDRAWN",
                   value: fmt(lifetimeWithdrawn),
+                  ghsValue: exchangeRate ? `₵${(lifetimeWithdrawn * exchangeRate).toLocaleString("en-US", { maximumFractionDigits: 0 })} total` : null,
                   sub: `Over ${years} years`,
                   color: "#ffbe0b",
                   big: false,
@@ -316,11 +407,12 @@ export default function RetirementDrawdown() {
                 {
                   label: "NET FROM PORTFOLIO",
                   value: fmt(netDrawdown),
+                  ghsValue: exchangeRate ? `₵${(netDrawdown * exchangeRate).toLocaleString("en-US", { maximumFractionDigits: 0 })} net` : null,
                   sub: `After ${fmt(lifetimeContributed)} contributed`,
                   color: "#ff6b6b",
                   big: false,
                 },
-              ].map(({ label, value, sub, color, big }) => (
+              ].map(({ label, value, ghsValue, sub, color, big }) => (
                 <div
                   key={label}
                   style={{
@@ -343,6 +435,11 @@ export default function RetirementDrawdown() {
                   >
                     {value}
                   </div>
+                  {ghsValue && (
+                    <div style={{ fontSize: 12, color: "#888", marginTop: 4, fontFamily: "'DM Mono', monospace", letterSpacing: 0.5 }}>
+                      {ghsValue}
+                    </div>
+                  )}
                   <div style={{ fontSize: 11, color: "#555", marginTop: 6 }}>{sub}</div>
                 </div>
               ))}

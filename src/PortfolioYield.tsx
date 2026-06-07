@@ -57,13 +57,14 @@ export default function PortfolioYield() {
         if (p.portfolioGHS !== undefined) setPortfolioGHS(p.portfolioGHS);
         if (p.rate !== undefined) setRate(p.rate);
         if (p.lastEdited) lastEdited.current = p.lastEdited;
+        if (p.calculated) setCalculated(p.calculated);
       }
     } catch { /* ignore */ }
   }, []);
 
-  const saveToStorage = (usd: number | "", ghs: number | "", r: number | "", le: LastEdited) => {
+  const saveToStorage = (usd: number | "", ghs: number | "", r: number | "", le: LastEdited, calc?: Calculated | null) => {
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ portfolioUSD: usd, portfolioGHS: ghs, rate: r, lastEdited: le }));
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ portfolioUSD: usd, portfolioGHS: ghs, rate: r, lastEdited: le, calculated: calc ?? calculated }));
     } catch { /* ignore */ }
   };
 
@@ -117,11 +118,9 @@ export default function PortfolioYield() {
 
   const handleCalculate = () => {
     if (!canCalculate) return;
-    setCalculated({
-      usd: draftUSD!,
-      ghs: draftGHS,
-      rate: draftRate,
-    });
+    const next: Calculated = { usd: draftUSD!, ghs: draftGHS, rate: draftRate };
+    setCalculated(next);
+    saveToStorage(portfolioUSD, portfolioGHS, rate, lastEdited.current, next);
   };
 
   const rows = calculated
@@ -147,16 +146,19 @@ export default function PortfolioYield() {
         .yield-input-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
         .yield-sub { font-size: 11px; color: #555; letter-spacing: 1px; margin-top: 2px; }
         .yield-table td { text-align: right; }
-        .yield-table td:first-child { text-align: left; }
+        .yield-table td:first-child { text-align: left; position: sticky; left: 0; background: #0a0a14; z-index: 1; }
         .yield-table th { text-align: right; }
-        .yield-table th:first-child { text-align: left; }
+        .yield-table th:first-child { text-align: left; position: sticky; left: 0; background: #0a0a14; z-index: 2; }
         .yield-table tr:hover td { background: #ffffff04; }
+        .yield-table tr:hover td:first-child { background: #0e0e1a; }
         .yield-table tr:last-child td { border-bottom: none; }
         .yield-cell-main { color: #fff; font-size: 13px; }
         .yield-cell-sub { color: #555; font-size: 10px; letter-spacing: 0.5px; margin-top: 2px; }
         .yield-summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
         @media (max-width: 480px) { .yield-summary-grid { grid-template-columns: 1fr; } }
         .yield-empty-msg { font-size: 12px; color: #555; letter-spacing: 1px; text-align: center; padding: 40px 0; }
+        .yield-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .yield-table { min-width: 480px; }
       `}</style>
 
       {/* Input cards */}
@@ -221,15 +223,12 @@ export default function PortfolioYield() {
 
       {/* Calculate button row */}
       <div className="calc-bar">
-        {isDirty && (
-          <span className="calc-hint">Inputs changed — recalculate to update</span>
-        )}
+        <span className="calc-hint">{isDirty ? "Unapplied changes — press Calculate" : ""}</span>
         <button
           type="button"
           className="calc-btn"
-          disabled={!canCalculate}
+          disabled={!canCalculate || (calculated !== null && !isDirty)}
           onClick={handleCalculate}
-          style={{ marginLeft: "auto" }}
         >
           CALCULATE
         </button>
@@ -240,6 +239,7 @@ export default function PortfolioYield() {
         <>
           <div className="section">
             <p className="section-title">YIELD PROJECTIONS</p>
+            <div className="yield-table-scroll">
             <table className="yield-table">
               <thead>
                 <tr>
@@ -277,6 +277,7 @@ export default function PortfolioYield() {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
 
           <div className="yield-summary-grid" style={{ marginTop: 16 }}>
