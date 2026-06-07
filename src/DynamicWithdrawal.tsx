@@ -728,65 +728,43 @@ export default function DynamicWithdrawal() {
               <div
                 style={{
                   background: "#0e0e18",
-                  border: "1px solid #8338ec33",
+                  border: "1px solid #00ff8733",
                   borderRadius: 12,
                   padding: "18px 20px",
                 }}
               >
-                <div style={{ fontSize: 11, color: "#666", letterSpacing: 1.5, marginBottom: 6 }}>
-                  FIRST YEAR WITHDRAWAL
-                </div>
-                <div
-                  style={{
-                    fontFamily: "'Bebas Neue', sans-serif",
-                    fontSize: 28,
-                    color: "#8338ec",
-                    lineHeight: 1,
-                  }}
-                >
-                  {fmt(simData[1]?.withdrawal ?? initWithdrawal)}
-                </div>
-                {exchangeRate && (
-                  <div style={{ fontSize: 12, color: "#888", marginTop: 4 }}>
-                    {fmtGHS(simData[1]?.withdrawal ?? initWithdrawal, exchangeRate)}/yr
-                  </div>
-                )}
-                <div style={{ fontSize: 11, color: "#555", marginTop: 6 }}>
-                  {rate}% of year-1 value
-                </div>
-              </div>
-
-              <div
-                style={{
-                  background: "#0e0e18",
-                  border: "1px solid #ff6b6b22",
-                  borderRadius: 12,
-                  padding: "18px 20px",
-                }}
-              >
-                <div style={{ fontSize: 11, color: "#666", letterSpacing: 1.5, marginBottom: 6 }}>
-                  WITHDRAWAL RANGE
-                </div>
-                <div
-                  style={{
-                    fontFamily: "'Bebas Neue', sans-serif",
-                    fontSize: 22,
-                    color: "#ff6b6b",
-                    lineHeight: 1.2,
-                  }}
-                >
-                  {fmt(minWithdrawal)}
-                  <br />
-                  <span style={{ fontSize: 14, color: "#555" }}>to</span>
-                  <br />
-                  {fmt(maxWithdrawal)}
-                </div>
-                {exchangeRate && (
-                  <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>
-                    {fmtGHS(minWithdrawal, exchangeRate)} – {fmtGHS(maxWithdrawal, exchangeRate)}
-                  </div>
-                )}
-                <div style={{ fontSize: 11, color: "#555", marginTop: 4 }}>Min / Max annual</div>
+                {(() => {
+                  const perfPct = ((finalBalance - portfolio) / portfolio) * 100;
+                  const isPos = perfPct >= 0;
+                  return (
+                    <>
+                      <div style={{ fontSize: 11, color: "#666", letterSpacing: 1.5, marginBottom: 6 }}>
+                        TOTAL PORTFOLIO PERFORMANCE
+                      </div>
+                      <div
+                        style={{
+                          fontFamily: "'Bebas Neue', sans-serif",
+                          fontSize: 28,
+                          color: isPos ? "#00ff87" : "#ff6b6b",
+                          lineHeight: 1,
+                        }}
+                      >
+                        {isPos ? "+" : ""}{perfPct.toFixed(1)}%
+                      </div>
+                      <div style={{ fontSize: 12, color: "#aaa", marginTop: 6 }}>
+                        {fmt(portfolio)} → {fmt(finalBalance)}
+                      </div>
+                      {exchangeRate && (
+                        <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>
+                          {fmtGHS(portfolio, exchangeRate)} → {fmtGHS(finalBalance, exchangeRate)}
+                        </div>
+                      )}
+                      <div style={{ fontSize: 11, color: "#555", marginTop: 4 }}>
+                        Initial value vs final balance
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </div>
           </div>
