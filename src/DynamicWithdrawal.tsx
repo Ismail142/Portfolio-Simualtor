@@ -394,11 +394,11 @@ export default function DynamicWithdrawal() {
             <span>Portfolio Value (GHS)</span>
             <span className="slider-val">
               {typeof draftPortfolioGHS === "number" && draftPortfolioGHS > 0
-                ? `₵${Math.round(draftPortfolioGHS).toLocaleString()}`
+                ? fmtGHS(draftPortfolioGHS, 1) ?? "—"
                 : typeof draftPortfolio === "number" &&
                     typeof draftExchangeRate === "number" &&
                     draftExchangeRate > 0
-                  ? `₵${Math.round(draftPortfolio * draftExchangeRate).toLocaleString()}`
+                  ? fmtGHS(draftPortfolio * draftExchangeRate, 1) ?? "—"
                   : "—"}
             </span>
           </div>
