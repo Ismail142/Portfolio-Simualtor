@@ -254,6 +254,29 @@ export default function DynamicWithdrawal() {
   const cycledYears = simData.filter((d) => d.cycled).length;
   const initWithdrawal = portfolio * (rate / 100);
 
+  // Survival: with dynamic % withdrawal the portfolio never hits $0,
+  // so we grade by how much of the original value remains.
+  const retainedPct = (finalBalance / portfolio) * 100;
+  const survivalStatus: "strong" | "survived" | "atrisk" | "depleted" =
+    finalBalance >= portfolio ? "strong"
+    : retainedPct >= 50 ? "survived"
+    : retainedPct >= 10 ? "atrisk"
+    : "depleted";
+  const survivalLabel =
+    survivalStatus === "strong" ? "THRIVING"
+    : survivalStatus === "survived" ? "SURVIVED"
+    : survivalStatus === "atrisk" ? "AT RISK"
+    : "DEPLETED";
+  const survivalColor =
+    survivalStatus === "strong" ? "#00ff87"
+    : survivalStatus === "survived" ? "#00d4ff"
+    : survivalStatus === "atrisk" ? "#ffbe0b"
+    : "#ff6b6b";
+  const survivalSub =
+    survivalStatus === "strong"
+      ? `Portfolio grew ${retainedPct.toFixed(0)}% of start`
+      : `${retainedPct.toFixed(1)}% of starting value remains`;
+
   const chartData = simData.map((d) => ({
     year: d.year,
     balance: d.portfolioAfter,
@@ -373,6 +396,23 @@ export default function DynamicWithdrawal() {
             <h2 className="section-title">RESULTS · START {startYear} · {years} YEARS · {rate}% DYNAMIC WITHDRAWAL</h2>
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 12 }}>
+
+              {/* Survival card */}
+              <div style={{ background: "#0e0e18", border: `2px solid ${survivalColor}44`, borderRadius: 12, padding: "18px 20px", gridColumn: "span 1" }}>
+                <div style={{ fontSize: 11, color: "#666", letterSpacing: 1.5, marginBottom: 6 }}>SURVIVAL STATUS</div>
+                <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 36, color: survivalColor, lineHeight: 1 }}>
+                  {survivalLabel}
+                </div>
+                <div style={{ fontSize: 11, color: "#555", marginTop: 8 }}>{survivalSub}</div>
+                <div style={{
+                  marginTop: 10, height: 4, background: "#1a1a28", borderRadius: 2, overflow: "hidden",
+                }}>
+                  <div style={{
+                    height: "100%", width: `${Math.min(100, retainedPct)}%`,
+                    background: survivalColor, borderRadius: 2, transition: "width 0.4s",
+                  }} />
+                </div>
+              </div>
 
               <div style={{ background: "#0e0e18", border: `1px solid ${grew ? "#00ff8733" : "#ffbe0b33"}`, borderRadius: 12, padding: "18px 20px" }}>
                 <div style={{ fontSize: 11, color: "#666", letterSpacing: 1.5, marginBottom: 6 }}>FINAL BALANCE</div>
