@@ -113,7 +113,11 @@ export default function App() {
   const navigateTo = (p: Page) => {
     setPage(p);
     setMenuOpen(false);
-    try { window.localStorage.setItem("finance-tools-page", p); } catch { /* ignore */ }
+    try {
+      window.localStorage.setItem("finance-tools-page", p);
+    } catch {
+      /* ignore */
+    }
   };
 
   const [draftPortfolio, setDraftPortfolio] = useState<number | "">(50000);
@@ -250,7 +254,15 @@ export default function App() {
       });
     }
     return yearArr;
-  }, [portfolio, marketReturn, numYears, selectedRates, monthlyContribution, monthlyWithdrawal, mode]);
+  }, [
+    portfolio,
+    marketReturn,
+    numYears,
+    selectedRates,
+    monthlyContribution,
+    monthlyWithdrawal,
+    mode,
+  ]);
 
   const summaryRows = useMemo(() => {
     if (mode === "pct") {
@@ -364,11 +376,41 @@ export default function App() {
 
           {/* Desktop pills */}
           <nav className="nav-pills">
-            <button type="button" className={`nav-pill ${page === "simulator" ? "active" : ""}`} onClick={() => navigateTo("simulator")}>PORTFOLIO SIMULATOR</button>
-            <button type="button" className={`nav-pill ${page === "compound" ? "active" : ""}`} onClick={() => navigateTo("compound")}>COMPOUND GROWTH</button>
-            <button type="button" className={`nav-pill ${page === "retirement" ? "active" : ""}`} onClick={() => navigateTo("retirement")}>RETIREMENT PLANNER</button>
-            <button type="button" className={`nav-pill ${page === "yield" ? "active" : ""}`} onClick={() => navigateTo("yield")}>YIELD CALCULATOR</button>
-            <button type="button" className={`nav-pill ${page === "dynamic" ? "active" : ""}`} onClick={() => navigateTo("dynamic")}>DYNAMIC WITHDRAWAL</button>
+            <button
+              type="button"
+              className={`nav-pill ${page === "simulator" ? "active" : ""}`}
+              onClick={() => navigateTo("simulator")}
+            >
+              PORTFOLIO SIMULATOR
+            </button>
+            <button
+              type="button"
+              className={`nav-pill ${page === "compound" ? "active" : ""}`}
+              onClick={() => navigateTo("compound")}
+            >
+              COMPOUND GROWTH
+            </button>
+            <button
+              type="button"
+              className={`nav-pill ${page === "retirement" ? "active" : ""}`}
+              onClick={() => navigateTo("retirement")}
+            >
+              RETIREMENT PLANNER
+            </button>
+            <button
+              type="button"
+              className={`nav-pill ${page === "yield" ? "active" : ""}`}
+              onClick={() => navigateTo("yield")}
+            >
+              YIELD CALCULATOR
+            </button>
+            <button
+              type="button"
+              className={`nav-pill ${page === "dynamic" ? "active" : ""}`}
+              onClick={() => navigateTo("dynamic")}
+            >
+              DYNAMIC WITHDRAWAL
+            </button>
           </nav>
 
           {/* Mobile hamburger */}
@@ -411,343 +453,371 @@ export default function App() {
       </div>
 
       <div style={{ padding: "32px 24px 64px" }}>
-      <header style={{ maxWidth: 1200, margin: "0 auto 24px" }}>
-        <h1
-          style={{
-            fontFamily: "'Bebas Neue', sans-serif",
-            fontSize: "clamp(32px, 4vw, 50px)",
-            letterSpacing: 4,
-            margin: 0,
-            color: "#fff",
-          }}
-        >
-          {page === "simulator"
-            ? "PORTFOLIO SIMULATOR"
-            : page === "compound"
-              ? "COMPOUND GROWTH"
-              : page === "retirement"
-                ? "RETIREMENT DRAWDOWN PLANNER"
-                : page === "yield"
-                  ? "PORTFOLIO YIELD CALCULATOR"
-                  : "DYNAMIC WITHDRAWAL SIMULATOR"}
-        </h1>
-        <p style={{ color: "#777", margin: "4px 0 0", fontSize: 13 }}>
-          {page === "simulator"
-            ? "Choose % withdrawal or fixed monthly amount · monthly contributions included"
-            : page === "compound"
-              ? "Calculate how your investment grows with compound interest and regular contributions"
-              : page === "retirement"
-                ? "Solve for the exact monthly withdrawal that draws your portfolio to $0 at your life expectancy"
-                : page === "yield"
-                  ? "Enter USD or GHS value · see monthly and annual yield at 4–8% · live currency conversion"
-                  : "Test dynamic guardrails withdrawal against real S&P 500 returns 1985–2026 · USD & GHS"}
-        </p>
-      </header>
+        <header style={{ maxWidth: 1200, margin: "0 auto 24px" }}>
+          <h1
+            style={{
+              fontFamily: "'Bebas Neue', sans-serif",
+              fontSize: "clamp(32px, 4vw, 50px)",
+              letterSpacing: 4,
+              margin: 0,
+              color: "#fff",
+            }}
+          >
+            {page === "simulator"
+              ? "PORTFOLIO SIMULATOR"
+              : page === "compound"
+                ? "COMPOUND GROWTH"
+                : page === "retirement"
+                  ? "RETIREMENT DRAWDOWN PLANNER"
+                  : page === "yield"
+                    ? "PORTFOLIO YIELD CALCULATOR"
+                    : "DYNAMIC WITHDRAWAL SIMULATOR"}
+          </h1>
+          <p style={{ color: "#777", margin: "4px 0 0", fontSize: 13 }}>
+            {page === "simulator"
+              ? "Choose % withdrawal or fixed monthly amount · monthly contributions included"
+              : page === "compound"
+                ? "Calculate how your investment grows with compound interest and regular contributions"
+                : page === "retirement"
+                  ? "Solve for the exact monthly withdrawal that draws your portfolio to $0 at your life expectancy"
+                  : page === "yield"
+                    ? "Enter USD or GHS value · see monthly and annual yield at 4–8% · live currency conversion"
+                    : "Test dynamic withdrawal against real S&P 500 returns 1985–2026 · USD & GHS"}
+          </p>
+        </header>
 
-      <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-        {page === "compound" && <CompoundGrowth />}
-        {page === "retirement" && <RetirementDrawdown />}
-        {page === "yield" && <PortfolioYield />}
-        {page === "dynamic" && <DynamicWithdrawal />}
-        {page === "simulator" && (<>
-        <div style={{ marginBottom: 16, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 12, color: "#888", letterSpacing: 1.5 }}>WITHDRAWAL MODE</span>
-          <div className="mode-switch">
-            <button
-              type="button"
-              className={`mode-btn ${draftMode === "pct" ? "active" : ""}`}
-              onClick={() => setDraftMode("pct")}
-            >
-              PERCENTAGE
-            </button>
-            <button
-              type="button"
-              className={`mode-btn ${draftMode === "fixed" ? "active" : ""}`}
-              onClick={() => setDraftMode("fixed")}
-            >
-              FIXED AMOUNT
-            </button>
-          </div>
-        </div>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-            gap: 16,
-          }}
-        >
-          <div className="stat-card slider-wrap">
-            <div className="slider-label">
-              <span>Starting Portfolio ($)</span>
-              <span className="slider-val">{fmt(Number(draftPortfolio) || 0)}</span>
-            </div>
-            <input
-              className="num-input"
-              type="number"
-              min={1}
-              step={1000}
-              value={draftPortfolio}
-              onChange={(e) => setDraftPortfolio(e.target.value === "" ? "" : +e.target.value)}
-            />
-          </div>
-
-          <div className="stat-card slider-wrap">
-            <div className="slider-label">
-              <span>Annual Market Return (%)</span>
-              <span className="slider-val">{Number(draftMarketReturn) || 0}%</span>
-            </div>
-            <input
-              className="num-input"
-              type="number"
-              min={1}
-              step={0.1}
-              value={draftMarketReturn}
-              onChange={(e) => setDraftMarketReturn(e.target.value === "" ? "" : +e.target.value)}
-            />
-          </div>
-
-          <div className="stat-card slider-wrap">
-            <div className="slider-label">
-              <span>Simulation Years</span>
-              <span className="slider-val">{Number(draftNumYears) || 0} yrs</span>
-            </div>
-            <input
-              className="num-input"
-              type="number"
-              min={1}
-              step={1}
-              value={draftNumYears}
-              onChange={(e) => setDraftNumYears(e.target.value === "" ? "" : +e.target.value)}
-            />
-          </div>
-
-          <div className="stat-card slider-wrap">
-            <div className="slider-label">
-              <span>Monthly Contribution ($)</span>
-              <span className="slider-val">{fmt(Number(draftMonthlyContribution) || 0)}</span>
-            </div>
-            <input
-              className="num-input"
-              type="number"
-              min={0}
-              step={50}
-              value={draftMonthlyContribution}
-              onChange={(e) =>
-                setDraftMonthlyContribution(e.target.value === "" ? "" : +e.target.value)
-              }
-            />
-          </div>
-
-          {draftMode === "fixed" && (
-            <div className="stat-card slider-wrap">
-              <div className="slider-label">
-                <span>Monthly Withdrawal ($)</span>
-                <span className="slider-val">{fmt(Number(draftMonthlyWithdrawal) || 0)}</span>
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          {page === "compound" && <CompoundGrowth />}
+          {page === "retirement" && <RetirementDrawdown />}
+          {page === "yield" && <PortfolioYield />}
+          {page === "dynamic" && <DynamicWithdrawal />}
+          {page === "simulator" && (
+            <>
+              <div
+                style={{
+                  marginBottom: 16,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 14,
+                  flexWrap: "wrap",
+                }}
+              >
+                <span style={{ fontSize: 12, color: "#888", letterSpacing: 1.5 }}>
+                  WITHDRAWAL MODE
+                </span>
+                <div className="mode-switch">
+                  <button
+                    type="button"
+                    className={`mode-btn ${draftMode === "pct" ? "active" : ""}`}
+                    onClick={() => setDraftMode("pct")}
+                  >
+                    PERCENTAGE
+                  </button>
+                  <button
+                    type="button"
+                    className={`mode-btn ${draftMode === "fixed" ? "active" : ""}`}
+                    onClick={() => setDraftMode("fixed")}
+                  >
+                    FIXED AMOUNT
+                  </button>
+                </div>
               </div>
-              <input
-                className="num-input"
-                type="number"
-                min={0}
-                step={100}
-                value={draftMonthlyWithdrawal}
-                onChange={(e) =>
-                  setDraftMonthlyWithdrawal(e.target.value === "" ? "" : +e.target.value)
-                }
-              />
-            </div>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                  gap: 16,
+                }}
+              >
+                <div className="stat-card slider-wrap">
+                  <div className="slider-label">
+                    <span>Starting Portfolio ($)</span>
+                    <span className="slider-val">{fmt(Number(draftPortfolio) || 0)}</span>
+                  </div>
+                  <input
+                    className="num-input"
+                    type="number"
+                    min={1}
+                    step={1000}
+                    value={draftPortfolio}
+                    onChange={(e) =>
+                      setDraftPortfolio(e.target.value === "" ? "" : +e.target.value)
+                    }
+                  />
+                </div>
+
+                <div className="stat-card slider-wrap">
+                  <div className="slider-label">
+                    <span>Annual Market Return (%)</span>
+                    <span className="slider-val">{Number(draftMarketReturn) || 0}%</span>
+                  </div>
+                  <input
+                    className="num-input"
+                    type="number"
+                    min={1}
+                    step={0.1}
+                    value={draftMarketReturn}
+                    onChange={(e) =>
+                      setDraftMarketReturn(e.target.value === "" ? "" : +e.target.value)
+                    }
+                  />
+                </div>
+
+                <div className="stat-card slider-wrap">
+                  <div className="slider-label">
+                    <span>Simulation Years</span>
+                    <span className="slider-val">{Number(draftNumYears) || 0} yrs</span>
+                  </div>
+                  <input
+                    className="num-input"
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={draftNumYears}
+                    onChange={(e) => setDraftNumYears(e.target.value === "" ? "" : +e.target.value)}
+                  />
+                </div>
+
+                <div className="stat-card slider-wrap">
+                  <div className="slider-label">
+                    <span>Monthly Contribution ($)</span>
+                    <span className="slider-val">{fmt(Number(draftMonthlyContribution) || 0)}</span>
+                  </div>
+                  <input
+                    className="num-input"
+                    type="number"
+                    min={0}
+                    step={50}
+                    value={draftMonthlyContribution}
+                    onChange={(e) =>
+                      setDraftMonthlyContribution(e.target.value === "" ? "" : +e.target.value)
+                    }
+                  />
+                </div>
+
+                {draftMode === "fixed" && (
+                  <div className="stat-card slider-wrap">
+                    <div className="slider-label">
+                      <span>Monthly Withdrawal ($)</span>
+                      <span className="slider-val">{fmt(Number(draftMonthlyWithdrawal) || 0)}</span>
+                    </div>
+                    <input
+                      className="num-input"
+                      type="number"
+                      min={0}
+                      step={100}
+                      value={draftMonthlyWithdrawal}
+                      onChange={(e) =>
+                        setDraftMonthlyWithdrawal(e.target.value === "" ? "" : +e.target.value)
+                      }
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="calc-bar">
+                <span className="calc-hint">
+                  {isDirty ? "Unapplied changes — press Calculate" : ""}
+                </span>
+                <button
+                  className="calc-btn"
+                  onClick={handleCalculate}
+                  disabled={!isDirty}
+                  type="button"
+                >
+                  CALCULATE
+                </button>
+              </div>
+
+              {mode === "pct" && (
+                <div className="section">
+                  <h2 className="section-title">TOGGLE WITHDRAWAL RATES TO COMPARE</h2>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                    {RATES.map((r, i) => {
+                      const active = selectedRates.includes(r);
+                      return (
+                        <button
+                          key={r}
+                          className={`rate-btn ${active ? "active" : ""}`}
+                          style={{ color: active ? COLORS[i] : undefined }}
+                          onClick={() => toggleRate(r)}
+                        >
+                          {r}%
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div className="section">
+                <h2 className="section-title">PORTFOLIO VALUE OVER TIME</h2>
+                <div style={{ width: "100%", height: 360 }}>
+                  <ResponsiveContainer>
+                    <LineChart data={allData} margin={{ top: 10, right: 20, bottom: 0, left: 0 }}>
+                      <CartesianGrid stroke="#1a1a28" strokeDasharray="3 3" />
+                      <XAxis
+                        dataKey="year"
+                        stroke="#555"
+                        tick={{ fill: "#666", fontSize: 11 }}
+                        label={{
+                          value: "Year",
+                          position: "insideBottom",
+                          offset: -5,
+                          fill: "#555",
+                        }}
+                      />
+                      <YAxis
+                        stroke="#555"
+                        tick={{ fill: "#666", fontSize: 11 }}
+                        tickFormatter={(v) => fmt(Number(v))}
+                      />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Legend wrapperStyle={{ fontSize: 12, color: "#888" }} />
+                      {mode === "pct" ? (
+                        selectedRates.map((r) => (
+                          <Line
+                            key={r}
+                            type="monotone"
+                            dataKey={`${r}%`}
+                            stroke={colorFor(r)}
+                            strokeWidth={2}
+                            dot={false}
+                            activeDot={{ r: 4 }}
+                          />
+                        ))
+                      ) : (
+                        <Line
+                          type="monotone"
+                          dataKey={fixedKey}
+                          name={`${fmt(monthlyWithdrawal)}/mo`}
+                          stroke={FIXED_COLOR}
+                          strokeWidth={2}
+                          dot={false}
+                          activeDot={{ r: 4 }}
+                        />
+                      )}
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div className="section">
+                <h2 className="section-title">MONTHLY EXPENSES (= WITHDRAWAL ÷ 12)</h2>
+                <p style={{ color: "#666", fontSize: 12, marginTop: -8, marginBottom: 14 }}>
+                  {mode === "pct"
+                    ? "Monthly spend available each year — rises and falls with the portfolio value"
+                    : "Fixed monthly withdrawal amount per year (capped if portfolio runs low)"}
+                </p>
+                <div style={{ width: "100%", height: 320 }}>
+                  <ResponsiveContainer>
+                    <LineChart data={allData} margin={{ top: 10, right: 20, bottom: 0, left: 0 }}>
+                      <CartesianGrid stroke="#1a1a28" strokeDasharray="3 3" />
+                      <XAxis dataKey="year" stroke="#555" tick={{ fill: "#666", fontSize: 11 }} />
+                      <YAxis
+                        stroke="#555"
+                        tick={{ fill: "#666", fontSize: 11 }}
+                        tickFormatter={(v) => fmt(Number(v))}
+                      />
+                      <Tooltip content={<CustomTooltip />} />
+                      {mode === "pct" ? (
+                        selectedRates.map((r) => (
+                          <Line
+                            key={r}
+                            type="monotone"
+                            dataKey={`w${r}`}
+                            name={`${r}% monthly expense`}
+                            stroke={colorFor(r)}
+                            strokeWidth={2}
+                            dot={false}
+                          />
+                        ))
+                      ) : (
+                        <Line
+                          type="monotone"
+                          dataKey={`w${fixedKey}`}
+                          name="Monthly expense"
+                          stroke={FIXED_COLOR}
+                          strokeWidth={2}
+                          dot={false}
+                        />
+                      )}
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div className="section">
+                <h2 className="section-title">
+                  {mode === "pct" ? "RATE COMPARISON SUMMARY" : "FIXED WITHDRAWAL SUMMARY"} ·{" "}
+                  {numYears}-YEAR HORIZON
+                </h2>
+                <div style={{ overflowX: "auto" }}>
+                  <table>
+                    <thead>
+                      <tr>
+                        {[
+                          mode === "pct" ? "Rate" : "Withdrawal",
+                          "Yr 1 Monthly Exp",
+                          `Yr ${numYears} Monthly Exp`,
+                          `Portfolio Yr ${numYears}`,
+                          "Status",
+                        ].map((h) => (
+                          <th key={h}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {summaryRows.map(
+                        ({ label, yr1Withdrawal, lastWithdrawal, finalValue, depletedAt }, i) => {
+                          const color = mode === "pct" ? COLORS[i] : FIXED_COLOR;
+                          const status = depletedAt
+                            ? `⚠ Depleted yr ${depletedAt}`
+                            : finalValue > portfolio
+                              ? "✓ Growing"
+                              : "~ Declining";
+                          const statusColor = depletedAt
+                            ? "#ff6b6b"
+                            : finalValue > portfolio
+                              ? "#00ff87"
+                              : "#ffbe0b";
+                          return (
+                            <tr key={label}>
+                              <td style={{ color, fontWeight: 500 }}>{label}</td>
+                              <td>{fmt(Math.round(yr1Withdrawal / 12))}</td>
+                              <td
+                                style={{
+                                  color: lastWithdrawal >= yr1Withdrawal ? "#00ff87" : "#ff6b6b",
+                                }}
+                              >
+                                {fmt(Math.round(lastWithdrawal / 12))}
+                              </td>
+                              <td>{fmt(finalValue)}</td>
+                              <td style={{ color: statusColor }}>{status}</td>
+                            </tr>
+                          );
+                        },
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <p
+                style={{
+                  textAlign: "center",
+                  color: "#444",
+                  fontSize: 11,
+                  marginTop: 32,
+                  letterSpacing: 1,
+                }}
+              >
+                For illustrative purposes only · Not financial advice · Returns not guaranteed
+              </p>
+            </>
           )}
         </div>
-
-        <div className="calc-bar">
-          <span className="calc-hint">{isDirty ? "Unapplied changes — press Calculate" : ""}</span>
-          <button className="calc-btn" onClick={handleCalculate} disabled={!isDirty} type="button">
-            CALCULATE
-          </button>
-        </div>
-
-        {mode === "pct" && (
-          <div className="section">
-            <h2 className="section-title">TOGGLE WITHDRAWAL RATES TO COMPARE</h2>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-              {RATES.map((r, i) => {
-                const active = selectedRates.includes(r);
-                return (
-                  <button
-                    key={r}
-                    className={`rate-btn ${active ? "active" : ""}`}
-                    style={{ color: active ? COLORS[i] : undefined }}
-                    onClick={() => toggleRate(r)}
-                  >
-                    {r}%
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        <div className="section">
-          <h2 className="section-title">PORTFOLIO VALUE OVER TIME</h2>
-          <div style={{ width: "100%", height: 360 }}>
-            <ResponsiveContainer>
-              <LineChart data={allData} margin={{ top: 10, right: 20, bottom: 0, left: 0 }}>
-                <CartesianGrid stroke="#1a1a28" strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="year"
-                  stroke="#555"
-                  tick={{ fill: "#666", fontSize: 11 }}
-                  label={{ value: "Year", position: "insideBottom", offset: -5, fill: "#555" }}
-                />
-                <YAxis
-                  stroke="#555"
-                  tick={{ fill: "#666", fontSize: 11 }}
-                  tickFormatter={(v) => fmt(Number(v))}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend wrapperStyle={{ fontSize: 12, color: "#888" }} />
-                {mode === "pct" ? (
-                  selectedRates.map((r) => (
-                    <Line
-                      key={r}
-                      type="monotone"
-                      dataKey={`${r}%`}
-                      stroke={colorFor(r)}
-                      strokeWidth={2}
-                      dot={false}
-                      activeDot={{ r: 4 }}
-                    />
-                  ))
-                ) : (
-                  <Line
-                    type="monotone"
-                    dataKey={fixedKey}
-                    name={`${fmt(monthlyWithdrawal)}/mo`}
-                    stroke={FIXED_COLOR}
-                    strokeWidth={2}
-                    dot={false}
-                    activeDot={{ r: 4 }}
-                  />
-                )}
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="section">
-          <h2 className="section-title">MONTHLY EXPENSES (= WITHDRAWAL ÷ 12)</h2>
-          <p style={{ color: "#666", fontSize: 12, marginTop: -8, marginBottom: 14 }}>
-            {mode === "pct"
-              ? "Monthly spend available each year — rises and falls with the portfolio value"
-              : "Fixed monthly withdrawal amount per year (capped if portfolio runs low)"}
-          </p>
-          <div style={{ width: "100%", height: 320 }}>
-            <ResponsiveContainer>
-              <LineChart data={allData} margin={{ top: 10, right: 20, bottom: 0, left: 0 }}>
-                <CartesianGrid stroke="#1a1a28" strokeDasharray="3 3" />
-                <XAxis dataKey="year" stroke="#555" tick={{ fill: "#666", fontSize: 11 }} />
-                <YAxis
-                  stroke="#555"
-                  tick={{ fill: "#666", fontSize: 11 }}
-                  tickFormatter={(v) => fmt(Number(v))}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                {mode === "pct" ? (
-                  selectedRates.map((r) => (
-                    <Line
-                      key={r}
-                      type="monotone"
-                      dataKey={`w${r}`}
-                      name={`${r}% monthly expense`}
-                      stroke={colorFor(r)}
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                  ))
-                ) : (
-                  <Line
-                    type="monotone"
-                    dataKey={`w${fixedKey}`}
-                    name="Monthly expense"
-                    stroke={FIXED_COLOR}
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                )}
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="section">
-          <h2 className="section-title">
-            {mode === "pct" ? "RATE COMPARISON SUMMARY" : "FIXED WITHDRAWAL SUMMARY"} ·{" "}
-            {numYears}-YEAR HORIZON
-          </h2>
-          <div style={{ overflowX: "auto" }}>
-            <table>
-              <thead>
-                <tr>
-                  {[
-                    mode === "pct" ? "Rate" : "Withdrawal",
-                    "Yr 1 Monthly Exp",
-                    `Yr ${numYears} Monthly Exp`,
-                    `Portfolio Yr ${numYears}`,
-                    "Status",
-                  ].map((h) => (
-                    <th key={h}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {summaryRows.map(
-                  ({ label, yr1Withdrawal, lastWithdrawal, finalValue, depletedAt }, i) => {
-                    const color = mode === "pct" ? COLORS[i] : FIXED_COLOR;
-                    const status = depletedAt
-                      ? `⚠ Depleted yr ${depletedAt}`
-                      : finalValue > portfolio
-                        ? "✓ Growing"
-                        : "~ Declining";
-                    const statusColor = depletedAt
-                      ? "#ff6b6b"
-                      : finalValue > portfolio
-                        ? "#00ff87"
-                        : "#ffbe0b";
-                    return (
-                      <tr key={label}>
-                        <td style={{ color, fontWeight: 500 }}>{label}</td>
-                        <td>{fmt(Math.round(yr1Withdrawal / 12))}</td>
-                        <td
-                          style={{
-                            color: lastWithdrawal >= yr1Withdrawal ? "#00ff87" : "#ff6b6b",
-                          }}
-                        >
-                          {fmt(Math.round(lastWithdrawal / 12))}
-                        </td>
-                        <td>{fmt(finalValue)}</td>
-                        <td style={{ color: statusColor }}>{status}</td>
-                      </tr>
-                    );
-                  },
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <p
-          style={{
-            textAlign: "center",
-            color: "#444",
-            fontSize: 11,
-            marginTop: 32,
-            letterSpacing: 1,
-          }}
-        >
-          For illustrative purposes only · Not financial advice · Returns not guaranteed
-        </p>
-        </>)}
-      </div>
       </div>
     </div>
   );
