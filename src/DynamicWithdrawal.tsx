@@ -847,19 +847,15 @@ export default function DynamicWithdrawal() {
           <div className="section">
             <h2 className="section-title">YEAR-BY-YEAR DETAIL</h2>
             <div style={{ overflowX: "auto" }}>
-              <table>
+              <table style={{ borderCollapse: "separate", borderSpacing: 0 }}>
                 <thead>
                   <tr>
-                    {[
-                      "Year",
-                      "Return",
-                      "Value Before Withdrawal",
-                      "Annual Withdrawal (USD)",
-                      ...(exchangeRate ? ["Monthly GHS Withdrawal"] : []),
-                      "Value After Withdrawal",
-                    ].map((h) => (
-                      <th key={h}>{h}</th>
-                    ))}
+                    <th style={{ position: "sticky", left: 0, zIndex: 2, background: "#0a0a12", whiteSpace: "nowrap" }}>Year</th>
+                    <th style={{ position: "sticky", left: 72, zIndex: 2, background: "#0a0a12", whiteSpace: "nowrap" }}>Return</th>
+                    <th>Value Before Withdrawal</th>
+                    <th>Annual Withdrawal (USD)</th>
+                    {exchangeRate && <th>Monthly GHS Withdrawal</th>}
+                    <th>Value After Withdrawal</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -878,8 +874,10 @@ export default function DynamicWithdrawal() {
                       exchangeRate && d.year > 0 ? (d.withdrawal / 12) * exchangeRate : null;
                     return (
                       <tr key={d.year}>
-                        <td style={{ color: "#888" }}>{d.year === 0 ? "Start" : d.calendarYear}</td>
-                        <td style={{ color: retColor, fontWeight: 500 }}>
+                        <td style={{ color: "#888", position: "sticky", left: 0, zIndex: 1, background: "#0a0a12", whiteSpace: "nowrap" }}>
+                          {d.year === 0 ? "Start" : d.calendarYear}
+                        </td>
+                        <td style={{ color: retColor, fontWeight: 500, position: "sticky", left: 72, zIndex: 1, background: "#0a0a12", whiteSpace: "nowrap" }}>
                           {d.year === 0
                             ? "—"
                             : `${d.annualReturn >= 0 ? "+" : ""}${d.annualReturn.toFixed(1)}%`}
