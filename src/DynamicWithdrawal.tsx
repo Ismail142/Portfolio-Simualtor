@@ -844,18 +844,31 @@ export default function DynamicWithdrawal() {
           </div>
 
           {/* Year-by-year table */}
+          <style>{`
+            .dw-table { min-width: 600px; }
+            .dw-table th, .dw-table td { background: #0a0a14; }
+            .dw-table th:nth-child(1), .dw-table td:nth-child(1) {
+              position: sticky; left: 0; z-index: 2; min-width: 72px; white-space: nowrap;
+            }
+            .dw-table th:nth-child(2), .dw-table td:nth-child(2) {
+              position: sticky; left: 72px; z-index: 2; white-space: nowrap;
+              box-shadow: 4px 0 10px rgba(0,0,0,0.7);
+              clip-path: inset(0px -20px 0px 0px);
+            }
+            .dw-table tr:hover td { background: #0e0e1a; }
+          `}</style>
           <div className="section">
             <h2 className="section-title">YEAR-BY-YEAR DETAIL</h2>
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ borderCollapse: "separate", borderSpacing: 0 }}>
+            <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+              <table className="dw-table">
                 <thead>
                   <tr>
-                    <th style={{ position: "sticky", left: 0, zIndex: 2, background: "#0a0a14", whiteSpace: "nowrap" }}>Year</th>
-                    <th style={{ position: "sticky", left: 72, zIndex: 2, background: "#0a0a14", whiteSpace: "nowrap", boxShadow: "4px 0 8px #000a" }}>Return</th>
-                    <th style={{ background: "#0a0a14" }}>Value Before Withdrawal</th>
-                    <th style={{ background: "#0a0a14" }}>Annual Withdrawal (USD)</th>
-                    {exchangeRate && <th style={{ background: "#0a0a14" }}>Monthly GHS Withdrawal</th>}
-                    <th style={{ background: "#0a0a14" }}>Value After Withdrawal</th>
+                    <th>Year</th>
+                    <th>Return</th>
+                    <th>Value Before Withdrawal</th>
+                    <th>Annual Withdrawal (USD)</th>
+                    {exchangeRate && <th>Monthly GHS Withdrawal</th>}
+                    <th>Value After Withdrawal</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -872,31 +885,30 @@ export default function DynamicWithdrawal() {
                             : "#ff6b6b";
                     const monthlyGHSWithdrawal =
                       exchangeRate && d.year > 0 ? (d.withdrawal / 12) * exchangeRate : null;
-                    const rowBg = "#0a0a14";
                     return (
                       <tr key={d.year}>
-                        <td style={{ color: "#888", position: "sticky", left: 0, zIndex: 1, background: rowBg, whiteSpace: "nowrap" }}>
+                        <td style={{ color: "#888" }}>
                           {d.year === 0 ? "Start" : d.calendarYear}
                         </td>
-                        <td style={{ color: retColor, fontWeight: 500, position: "sticky", left: 72, zIndex: 1, background: rowBg, whiteSpace: "nowrap", boxShadow: "4px 0 8px #000a" }}>
+                        <td style={{ color: retColor, fontWeight: 500 }}>
                           {d.year === 0
                             ? "—"
                             : `${d.annualReturn >= 0 ? "+" : ""}${d.annualReturn.toFixed(1)}%`}
                         </td>
-                        <td style={{ color: "#aaa", background: rowBg }}>
+                        <td style={{ color: "#aaa" }}>
                           {d.year === 0 ? fmt(d.portfolioAfter) : fmt(d.portfolioBefore)}
                         </td>
-                        <td style={{ color: "#ffbe0b", fontWeight: 500, background: rowBg }}>
+                        <td style={{ color: "#ffbe0b", fontWeight: 500 }}>
                           {d.year === 0 ? "—" : fmt(d.withdrawal)}
                         </td>
                         {exchangeRate && (
-                          <td style={{ color: "#00ff87", fontSize: 12, background: rowBg }}>
+                          <td style={{ color: "#00ff87", fontSize: 12 }}>
                             {monthlyGHSWithdrawal !== null
                               ? `₵${Math.round(monthlyGHSWithdrawal).toLocaleString()}/mo`
                               : "—"}
                           </td>
                         )}
-                        <td style={{ color: balColor, fontWeight: 500, background: rowBg }}>
+                        <td style={{ color: balColor, fontWeight: 500 }}>
                           {fmt(d.portfolioAfter)}
                         </td>
                       </tr>
