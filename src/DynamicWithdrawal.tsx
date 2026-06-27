@@ -157,9 +157,9 @@ type SimYear = {
 
 /**
  * Each year:
- *  1. Apply historical market return to portfolio
- *  2. Withdraw withdrawalRate% of the post-return portfolio value
- *  3. Remainder carries forward to next year
+ *  1. Withdraw withdrawalRate% of the opening portfolio value (beginning-of-year)
+ *  2. Apply historical market return to the remaining balance
+ *  3. Result carries forward to next year
  * Simulation runs from startYear to MAX_YEAR (no cycling).
  */
 function simulate(initialPortfolio: number, withdrawalRate: number, startYear: number): SimYear[] {
@@ -181,9 +181,11 @@ function simulate(initialPortfolio: number, withdrawalRate: number, startYear: n
     const calendarYear = startYear + y - 1;
     const annualReturn = getHistoricalReturn(calendarYear);
 
-    const portfolioBefore = portfolio * (1 + annualReturn / 100);
+    // Beginning-of-year withdrawal, then growth on remainder
+    const portfolioBefore = portfolio;
     const withdrawal = portfolioBefore * (withdrawalRate / 100);
-    portfolio = portfolioBefore - withdrawal;
+    const afterWithdrawal = portfolioBefore - withdrawal;
+    portfolio = afterWithdrawal * (1 + annualReturn / 100);
 
     result.push({
       year: y,
@@ -924,10 +926,10 @@ export default function DynamicWithdrawal() {
                   <tr>
                     <th>Year</th>
                     <th>Return</th>
-                    <th>Value Before Withdrawal</th>
+                    <th>Opening Balance</th>
                     <th>Annual Withdrawal (USD)</th>
                     {exchangeRate && <th>Monthly GHS Withdrawal</th>}
-                    <th>Value After Withdrawal</th>
+                    <th>Closing Balance</th>
                   </tr>
                 </thead>
                 <tbody>
