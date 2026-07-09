@@ -11,13 +11,6 @@ const RATE_COLORS: Record<number, string> = {
 
 const STORAGE_KEY = "portfolio-yield-inputs";
 
-function pctColor(p: number) {
-  if (p >= 100) return "#00ff87";
-  if (p >= 75) return "#00d4ff";
-  if (p >= 50) return "#ffbe0b";
-  return "#ff6b6b";
-}
-
 function fmtUSD(n: number) {
   return n >= 1_000_000
     ? `$${(n / 1_000_000).toFixed(2)}M`
@@ -51,7 +44,6 @@ export default function PortfolioYield() {
   const [portfolioUSD, setPortfolioUSD] = useState<number | "">(50000);
   const [portfolioGHS, setPortfolioGHS] = useState<number | "">("");
   const [rate, setRate] = useState<number | "">(15);
-  const [withdrawalTargetGHS, setWithdrawalTargetGHS] = useState<number | "">("");
   const lastEdited = useRef<LastEdited>("usd");
 
   const [calculated, setCalculated] = useState<Calculated | null>(null);
@@ -64,18 +56,16 @@ export default function PortfolioYield() {
         if (p.portfolioUSD !== undefined) setPortfolioUSD(p.portfolioUSD);
         if (p.portfolioGHS !== undefined) setPortfolioGHS(p.portfolioGHS);
         if (p.rate !== undefined) setRate(p.rate);
-        if (p.withdrawalTargetGHS !== undefined) setWithdrawalTargetGHS(p.withdrawalTargetGHS);
         if (p.lastEdited) lastEdited.current = p.lastEdited;
         if (p.calculated) setCalculated(p.calculated);
       }
     } catch { /* ignore */ }
   }, []);
 
-  const saveToStorage = (usd: number | "", ghs: number | "", r: number | "", le: LastEdited, calc?: Calculated | null, target?: number | "") => {
+  const saveToStorage = (usd: number | "", ghs: number | "", r: number | "", le: LastEdited, calc?: Calculated | null) => {
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify({
         portfolioUSD: usd, portfolioGHS: ghs, rate: r, lastEdited: le,
-        withdrawalTargetGHS: target ?? withdrawalTargetGHS,
         calculated: calc ?? calculated,
       }));
     } catch { /* ignore */ }
@@ -136,16 +126,13 @@ export default function PortfolioYield() {
     saveToStorage(portfolioUSD, portfolioGHS, rate, lastEdited.current, next);
   };
 
-  const targetGHS = typeof withdrawalTargetGHS === "number" && withdrawalTargetGHS > 0 ? withdrawalTargetGHS : null;
-
   const rows = calculated
     ? YIELD_RATES.map((pct) => {
         const annualUSD = calculated.usd * (pct / 100);
         const monthlyUSD = annualUSD / 12;
         const monthlyGHS = calculated.rate ? monthlyUSD * calculated.rate : null;
         const annualGHS = calculated.rate ? annualUSD * calculated.rate : null;
-        const targetPct = monthlyGHS !== null && targetGHS !== null ? (monthlyGHS / targetGHS) * 100 : null;
-        return { pct, annualUSD, monthlyUSD, monthlyGHS, annualGHS, targetPct };
+        return { pct, annualUSD, monthlyUSD, monthlyGHS, annualGHS };
       })
     : [];
 
@@ -235,29 +222,6 @@ export default function PortfolioYield() {
           />
           <div className="yield-sub">1 USD = ? GHS</div>
         </div>
-
-        <div className="stat-card slider-wrap">
-          <div className="slider-label">
-            <span>Withdrawal Target (GHS)</span>
-            <span className="slider-val">
-              {targetGHS !== null ? fmtGHS(targetGHS) : "—"}
-            </span>
-          </div>
-          <input
-            className="num-input"
-            type="number"
-            min={0}
-            step={100}
-            placeholder="optional"
-            value={typeof withdrawalTargetGHS === "number" ? withdrawalTargetGHS : ""}
-            onChange={(e) => {
-              const n = e.target.value === "" ? "" : parseFloat(e.target.value);
-              setWithdrawalTargetGHS(n);
-              saveToStorage(portfolioUSD, portfolioGHS, rate, lastEdited.current, undefined, n);
-            }}
-          />
-          <div className="yield-sub">MONTHLY GHS GOAL · shows % coverage per rate</div>
-        </div>
       </div>
 
       {/* Calculate button row */}
@@ -289,7 +253,7 @@ export default function PortfolioYield() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map(({ pct, annualUSD, monthlyUSD, monthlyGHS, targetPct }) => (
+                {rows.map(({ pct, annualUSD, monthlyUSD, monthlyGHS }) => (
                   <tr key={pct}>
                     <td>
                       <span style={{ color: RATE_COLORS[pct], fontWeight: 600, fontSize: 15 }}>
@@ -303,23 +267,7 @@ export default function PortfolioYield() {
                     <td>
                       {monthlyGHS !== null ? (
                         <>
-                          <div style={{ display: "flex", alignItems: "baseline", gap: 8, justifyContent: "flex-end" }}>
-                            <div className="yield-cell-main">{fmtGHS(monthlyGHS)}</div>
-                            {targetPct !== null && (
-                              <span style={{
-                                color: pctColor(targetPct),
-                                fontSize: 11,
-                                fontFamily: "'DM Mono', monospace",
-                                letterSpacing: 0.5,
-                                fontWeight: 600,
-                                whiteSpace: "nowrap",
-                              }}>
-                                {targetPct >= 100
-                                  ? `✓ ${targetPct.toFixed(0)}%`
-                                  : `${targetPct.toFixed(0)}%`}
-                              </span>
-                            )}
-                          </div>
+                          <div className="yield-cell-main">{fmtGHS(monthlyGHS)}</div>
                           <div className="yield-cell-sub">{fmtFull(monthlyGHS, "GHS")}/mo</div>
                         </>
                       ) : <span style={{ color: "#444" }}>—</span>}
