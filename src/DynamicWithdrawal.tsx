@@ -245,21 +245,21 @@ export default function DynamicWithdrawal() {
   const [draftExchangeRate, setDraftExchangeRate] = useState<number | "">(15);
   const [draftRate, setDraftRate] = useState<number | "">(4);
   const [draftStartYear, setDraftStartYear] = useState<number>(2000);
-  const [draftDuration, setDraftDuration] = useState<number>(30);
+  const [draftDuration, setDraftDuration] = useState<number | "">(30);
   const lastEdited = useRef<"usd" | "ghs">("usd");
 
   const [portfolio, setPortfolio] = useState(500000);
   const [exchangeRate, setExchangeRate] = useState<number | null>(null);
   const [rate, setRate] = useState(4);
   const [startYear, setStartYear] = useState(2000);
-  const [duration, setDuration] = useState(30);
+  const [duration, setDuration] = useState<number | null>(30);
   const [calculated, setCalculated] = useState(false);
 
-  // Effective end year: capped at MAX_YEAR
-  const endYear = Math.min(startYear + duration - 1, MAX_YEAR);
+  // Effective end year: empty duration → MAX_YEAR, otherwise capped at MAX_YEAR
+  const endYear = duration === null ? MAX_YEAR : Math.min(startYear + duration - 1, MAX_YEAR);
   const years = endYear - startYear + 1;
-  const draftEndYear = Math.min(draftStartYear + draftDuration - 1, MAX_YEAR);
-  const isCapped = draftStartYear + draftDuration - 1 > MAX_YEAR;
+  const draftEndYear = draftDuration === "" ? MAX_YEAR : Math.min(draftStartYear + draftDuration - 1, MAX_YEAR);
+  const isCapped = draftDuration !== "" && draftStartYear + draftDuration - 1 > MAX_YEAR;
 
   useEffect(() => {
     try {
@@ -277,12 +277,12 @@ export default function DynamicWithdrawal() {
       const er = s.exchangeRate && s.exchangeRate > 0 ? s.exchangeRate : null;
       const r = Math.max(0.1, Number(s.rate) || 4);
       const sy = Math.max(MIN_YEAR, Math.min(MAX_YEAR, Math.floor(Number(s.startYear) || 2000)));
-      const dur = Math.max(1, Math.floor(Number(s.duration) || 30));
+      const dur = s.duration != null ? Math.max(1, Math.floor(Number(s.duration))) : null;
       const ghs = s.portfolioGHS && s.portfolioGHS > 0 ? s.portfolioGHS : er ? p * er : "";
       setDraftPortfolio(p);
       setDraftRate(r);
       setDraftStartYear(sy);
-      setDraftDuration(dur);
+      setDraftDuration(dur ?? "");
       if (er) setDraftExchangeRate(er);
       if (ghs) setDraftPortfolioGHS(ghs);
       setPortfolio(p);
@@ -325,12 +325,14 @@ export default function DynamicWithdrawal() {
     }
   };
 
+  const committedDuration = duration;
+  const draftDurationVal = draftDuration === "" ? null : draftDuration;
   const isDirty =
     Number(draftPortfolio) !== portfolio ||
     (Number(draftExchangeRate) || null) !== exchangeRate ||
     Number(draftRate) !== rate ||
     draftStartYear !== startYear ||
-    draftDuration !== duration;
+    draftDurationVal !== committedDuration;
 
   const handleCalculate = () => {
     const p = Math.max(1, Math.floor(Number(draftPortfolio) || 1));
@@ -338,7 +340,7 @@ export default function DynamicWithdrawal() {
       typeof draftExchangeRate === "number" && draftExchangeRate > 0 ? draftExchangeRate : null;
     const r = Math.max(0.1, Number(draftRate) || 4);
     const sy = draftStartYear;
-    const dur = Math.max(1, Math.floor(Number(draftDuration) || 30));
+    const dur = draftDuration === "" ? null : Math.max(1, Math.floor(Number(draftDuration)));
     const ghsVal =
       typeof draftPortfolioGHS === "number" && draftPortfolioGHS > 0
         ? draftPortfolioGHS
@@ -347,7 +349,7 @@ export default function DynamicWithdrawal() {
           : null;
     setDraftPortfolio(p);
     setDraftRate(r);
-    setDraftDuration(dur);
+    setDraftDuration(dur ?? "");
     if (er) setDraftExchangeRate(er);
     if (ghsVal) setDraftPortfolioGHS(ghsVal);
     setPortfolio(p);
@@ -364,7 +366,7 @@ export default function DynamicWithdrawal() {
           exchangeRate: er,
           rate: r,
           startYear: sy,
-          duration: dur,
+          duration: dur ?? null,
           portfolioGHS: ghsVal,
         }),
       );
@@ -549,7 +551,7 @@ export default function DynamicWithdrawal() {
           <div className="slider-label">
             <span>Duration (years)</span>
             <span className="slider-val">
-              {draftDuration}
+              {draftDuration === "" ? `→ ${MAX_YEAR}` : draftDuration}
               {isCapped && <span style={{ color: "#ffbe0b", fontSize: 11, marginLeft: 6 }}>→ capped {MAX_YEAR}</span>}
             </span>
           </div>
@@ -559,14 +561,19 @@ export default function DynamicWithdrawal() {
             min={1}
             max={100}
             step={1}
-            placeholder="30"
+            placeholder={`empty = full data (${MAX_YEAR})`}
             value={draftDuration}
-            onChange={(e) => setDraftDuration(Math.max(1, Math.floor(Number(e.target.value) || 1)))}
+            onChange={(e) => {
+              const v = e.target.value;
+              setDraftDuration(v === "" ? "" : Math.max(1, Math.floor(Number(v))));
+            }}
           />
           <div style={{ fontSize: 11, color: "#555", letterSpacing: 1, marginTop: 4 }}>
-            {isCapped
-              ? `END YEAR CAPPED AT ${MAX_YEAR} (DATA LIMIT) · EFFECTIVE ${draftEndYear - draftStartYear + 1} YRS`
-              : `END YEAR: ${draftEndYear}`}
+            {draftDuration === ""
+              ? `NO LIMIT · RUNS TO ${MAX_YEAR}`
+              : isCapped
+                ? `END YEAR CAPPED AT ${MAX_YEAR} (DATA LIMIT) · EFFECTIVE ${draftEndYear - draftStartYear + 1} YRS`
+                : `END YEAR: ${draftEndYear}`}
           </div>
         </div>
       </div>
