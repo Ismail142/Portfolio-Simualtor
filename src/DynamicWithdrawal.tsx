@@ -160,10 +160,10 @@ type SimYear = {
  *  1. Withdraw withdrawalRate% of the opening portfolio value (beginning-of-year)
  *  2. Apply historical market return to the remaining balance
  *  3. Result carries forward to next year
- * Simulation runs from startYear to MAX_YEAR (no cycling).
+ * Simulation runs from startYear to endYear (capped at MAX_YEAR, no cycling).
  */
-function simulate(initialPortfolio: number, withdrawalRate: number, startYear: number): SimYear[] {
-  const retirementYears = MAX_YEAR - startYear + 1;
+function simulate(initialPortfolio: number, withdrawalRate: number, startYear: number, endYear: number): SimYear[] {
+  const retirementYears = endYear - startYear + 1;
   const result: SimYear[] = [];
   let portfolio = initialPortfolio;
 
@@ -245,16 +245,21 @@ export default function DynamicWithdrawal() {
   const [draftExchangeRate, setDraftExchangeRate] = useState<number | "">(15);
   const [draftRate, setDraftRate] = useState<number | "">(4);
   const [draftStartYear, setDraftStartYear] = useState<number>(2000);
+  const [draftDuration, setDraftDuration] = useState<number>(30);
   const lastEdited = useRef<"usd" | "ghs">("usd");
 
   const [portfolio, setPortfolio] = useState(500000);
   const [exchangeRate, setExchangeRate] = useState<number | null>(null);
   const [rate, setRate] = useState(4);
   const [startYear, setStartYear] = useState(2000);
+  const [duration, setDuration] = useState(30);
   const [calculated, setCalculated] = useState(false);
 
-  // Computed: always run from startYear to MAX_YEAR
-  const years = MAX_YEAR - startYear + 1;
+  // Effective end year: capped at MAX_YEAR
+  const endYear = Math.min(startYear + duration - 1, MAX_YEAR);
+  const years = endYear - startYear + 1;
+  const draftEndYear = Math.min(draftStartYear + draftDuration - 1, MAX_YEAR);
+  const isCapped = draftStartYear + draftDuration - 1 > MAX_YEAR;
 
   useEffect(() => {
     try {
@@ -265,22 +270,26 @@ export default function DynamicWithdrawal() {
         exchangeRate?: number;
         rate?: number;
         startYear?: number;
+        duration?: number;
         portfolioGHS?: number;
       };
       const p = Math.max(1, Number(s.portfolio) || 500000);
       const er = s.exchangeRate && s.exchangeRate > 0 ? s.exchangeRate : null;
       const r = Math.max(0.1, Number(s.rate) || 4);
       const sy = Math.max(MIN_YEAR, Math.min(MAX_YEAR, Math.floor(Number(s.startYear) || 2000)));
+      const dur = Math.max(1, Math.floor(Number(s.duration) || 30));
       const ghs = s.portfolioGHS && s.portfolioGHS > 0 ? s.portfolioGHS : er ? p * er : "";
       setDraftPortfolio(p);
       setDraftRate(r);
       setDraftStartYear(sy);
+      setDraftDuration(dur);
       if (er) setDraftExchangeRate(er);
       if (ghs) setDraftPortfolioGHS(ghs);
       setPortfolio(p);
       setExchangeRate(er);
       setRate(r);
       setStartYear(sy);
+      setDuration(dur);
       setCalculated(true);
     } catch {
       /* ignore */
@@ -320,7 +329,8 @@ export default function DynamicWithdrawal() {
     Number(draftPortfolio) !== portfolio ||
     (Number(draftExchangeRate) || null) !== exchangeRate ||
     Number(draftRate) !== rate ||
-    draftStartYear !== startYear;
+    draftStartYear !== startYear ||
+    draftDuration !== duration;
 
   const handleCalculate = () => {
     const p = Math.max(1, Math.floor(Number(draftPortfolio) || 1));
@@ -328,6 +338,7 @@ export default function DynamicWithdrawal() {
       typeof draftExchangeRate === "number" && draftExchangeRate > 0 ? draftExchangeRate : null;
     const r = Math.max(0.1, Number(draftRate) || 4);
     const sy = draftStartYear;
+    const dur = Math.max(1, Math.floor(Number(draftDuration) || 30));
     const ghsVal =
       typeof draftPortfolioGHS === "number" && draftPortfolioGHS > 0
         ? draftPortfolioGHS
@@ -336,12 +347,14 @@ export default function DynamicWithdrawal() {
           : null;
     setDraftPortfolio(p);
     setDraftRate(r);
+    setDraftDuration(dur);
     if (er) setDraftExchangeRate(er);
     if (ghsVal) setDraftPortfolioGHS(ghsVal);
     setPortfolio(p);
     setExchangeRate(er);
     setRate(r);
     setStartYear(sy);
+    setDuration(dur);
     setCalculated(true);
     try {
       window.localStorage.setItem(
@@ -351,6 +364,7 @@ export default function DynamicWithdrawal() {
           exchangeRate: er,
           rate: r,
           startYear: sy,
+          duration: dur,
           portfolioGHS: ghsVal,
         }),
       );
@@ -359,7 +373,7 @@ export default function DynamicWithdrawal() {
     }
   };
 
-  const simData = useMemo(() => simulate(portfolio, rate, startYear), [portfolio, rate, startYear]);
+  const simData = useMemo(() => simulate(portfolio, rate, startYear, endYear), [portfolio, rate, startYear, endYear]);
 
   const lastRow = simData[simData.length - 1];
   const finalBalance = lastRow.portfolioAfter;
@@ -530,6 +544,31 @@ export default function DynamicWithdrawal() {
             ))}
           </select>
         </div>
+
+        <div className="stat-card slider-wrap">
+          <div className="slider-label">
+            <span>Duration (years)</span>
+            <span className="slider-val">
+              {draftDuration}
+              {isCapped && <span style={{ color: "#ffbe0b", fontSize: 11, marginLeft: 6 }}>→ capped {MAX_YEAR}</span>}
+            </span>
+          </div>
+          <input
+            className="num-input"
+            type="number"
+            min={1}
+            max={100}
+            step={1}
+            placeholder="30"
+            value={draftDuration}
+            onChange={(e) => setDraftDuration(Math.max(1, Math.floor(Number(e.target.value) || 1)))}
+          />
+          <div style={{ fontSize: 11, color: "#555", letterSpacing: 1, marginTop: 4 }}>
+            {isCapped
+              ? `END YEAR CAPPED AT ${MAX_YEAR} (DATA LIMIT) · EFFECTIVE ${draftEndYear - draftStartYear + 1} YRS`
+              : `END YEAR: ${draftEndYear}`}
+          </div>
+        </div>
       </div>
 
       <div className="calc-bar">
@@ -568,7 +607,7 @@ export default function DynamicWithdrawal() {
           {/* Summary */}
           <div className="section">
             <h2 className="section-title">
-              RESULTS · START {startYear} → {MAX_YEAR} · {years} YEARS · {rate}% DYNAMIC WITHDRAWAL
+              RESULTS · START {startYear} → {endYear} · {years} YEARS · {rate}% DYNAMIC WITHDRAWAL
             </h2>
 
             <div
@@ -1004,7 +1043,7 @@ export default function DynamicWithdrawal() {
               <div>
                 <span style={{ color: "#555", letterSpacing: 1 }}>SEQUENCE TESTED</span>
                 <span style={{ color: "#aaa", marginLeft: 10 }}>
-                  {startYear} → {MAX_YEAR}
+                  {startYear} → {endYear}
                 </span>
               </div>
             </div>
