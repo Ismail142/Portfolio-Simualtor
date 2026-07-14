@@ -246,12 +246,14 @@ export default function GainBasedWithdrawal() {
         exchangeRate?: number;
         startYear?: number;
         duration?: number;
+        fixedRate?: number;
       };
       const cb = Math.max(1, Number(s.costBasis) || 300000);
       const er = s.exchangeRate && s.exchangeRate > 0 ? s.exchangeRate : null;
       const sy = Math.max(MIN_YEAR, Math.min(MAX_YEAR, Math.floor(Number(s.startYear) || 2000)));
       const dur = s.duration != null ? Math.max(1, Math.floor(Number(s.duration))) : null;
       const cbGHS = s.costBasisGHS && s.costBasisGHS > 0 ? s.costBasisGHS : er ? cb * er : "";
+      const fr = [4, 5, 6, 7, 8].includes(Number(s.fixedRate)) ? Number(s.fixedRate) : 6;
       setDraftCostBasis(cb);
       setDraftCostBasisGHS(cbGHS);
       setDraftStartYear(sy);
@@ -261,6 +263,7 @@ export default function GainBasedWithdrawal() {
       setExchangeRate(er);
       setStartYear(sy);
       setDuration(dur);
+      setFixedRate(fr);
       setCalculated(true);
     } catch { }
   }, []);
@@ -852,7 +855,14 @@ export default function GainBasedWithdrawal() {
                 <button
                   key={r}
                   type="button"
-                  onClick={() => setFixedRate(r)}
+                  onClick={() => {
+                    setFixedRate(r);
+                    try {
+                      const raw = window.localStorage.getItem(GB_STORAGE_KEY);
+                      const s = raw ? JSON.parse(raw) : {};
+                      window.localStorage.setItem(GB_STORAGE_KEY, JSON.stringify({ ...s, fixedRate: r }));
+                    } catch { }
+                  }}
                   style={{
                     background: fixedRate === r ? "#00d4ff22" : "#0e0e18",
                     border: `1px solid ${fixedRate === r ? "#00d4ff" : "#1a1a28"}`,
