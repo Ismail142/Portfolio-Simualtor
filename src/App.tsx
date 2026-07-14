@@ -103,6 +103,7 @@ export default function App() {
       if (saved === "retirement") return "retirement";
       if (saved === "yield") return "yield";
       if (saved === "dynamic") return "dynamic";
+      if (saved === "gain") return "gain";
       return "simulator";
     } catch {
       return "simulator";
