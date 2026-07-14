@@ -3,6 +3,7 @@ import CompoundGrowth from "./CompoundGrowth";
 import RetirementDrawdown from "./RetirementDrawdown";
 import PortfolioYield from "./PortfolioYield";
 import DynamicWithdrawal from "./DynamicWithdrawal";
+import GainBasedWithdrawal from "./GainBasedWithdrawal";
 import {
   CartesianGrid,
   Legend,
@@ -90,7 +91,7 @@ const CustomTooltip = ({
   );
 };
 
-type Page = "simulator" | "compound" | "retirement" | "yield" | "dynamic";
+type Page = "simulator" | "compound" | "retirement" | "yield" | "dynamic" | "gain";
 
 const STORAGE_KEY = "portfolio-simulator-inputs";
 
@@ -411,6 +412,13 @@ export default function App() {
             >
               DYNAMIC WITHDRAWAL
             </button>
+            <button
+              type="button"
+              className={`nav-pill ${page === "gain" ? "active" : ""}`}
+              onClick={() => navigateTo("gain")}
+            >
+              SMART WITHDRAWAL
+            </button>
           </nav>
 
           {/* Mobile hamburger */}
@@ -436,6 +444,7 @@ export default function App() {
                 { key: "retirement", label: "Retirement Planner" },
                 { key: "yield", label: "Yield Calculator" },
                 { key: "dynamic", label: "Dynamic Withdrawal" },
+                { key: "gain", label: "Smart Withdrawal" },
               ] as { key: Page; label: string }[]
             ).map(({ key, label }) => (
               <button
@@ -471,7 +480,9 @@ export default function App() {
                   ? "RETIREMENT DRAWDOWN PLANNER"
                   : page === "yield"
                     ? "PORTFOLIO YIELD CALCULATOR"
-                    : "DYNAMIC WITHDRAWAL SIMULATOR"}
+                    : page === "dynamic"
+                    ? "DYNAMIC WITHDRAWAL SIMULATOR"
+                    : "SMART WITHDRAWAL SIMULATOR"}
           </h1>
           <p style={{ color: "#777", margin: "4px 0 0", fontSize: 13 }}>
             {page === "simulator"
@@ -482,7 +493,9 @@ export default function App() {
                   ? "Solve for the exact monthly withdrawal that draws your portfolio to $0 at your life expectancy"
                   : page === "yield"
                     ? "Enter USD or GHS value · see monthly and annual yield at 4–8% · live currency conversion"
-                    : "Test dynamic withdrawal against real S&P 500 returns 1985–2026 · USD & GHS"}
+                    : page === "dynamic"
+                      ? "Test dynamic withdrawal against real S&P 500 returns 1985–2026 · USD & GHS"
+                      : "Withdrawal rate auto-adjusts 4–8% based on portfolio gain vs cost basis · historical S&P 500"}
           </p>
         </header>
 
@@ -491,6 +504,7 @@ export default function App() {
           {page === "retirement" && <RetirementDrawdown />}
           {page === "yield" && <PortfolioYield />}
           {page === "dynamic" && <DynamicWithdrawal />}
+          {page === "gain" && <GainBasedWithdrawal />}
           {page === "simulator" && (
             <>
               <div
