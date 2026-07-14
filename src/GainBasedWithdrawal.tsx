@@ -26,7 +26,7 @@ function getHistoricalReturn(yr: number): number {
 }
 
 function getWithdrawalRate(gainPct: number): number {
-  if (gainPct >= 75) return 8;
+  // if (gainPct >= 75) return 8;
   if (gainPct >= 50) return 7;
   if (gainPct >= 25) return 6;
   if (gainPct >= 0) return 5;
@@ -577,8 +577,8 @@ export default function GainBasedWithdrawal() {
         the S&P 500 return applies to the remainder.
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
           {[
-            { label: "≥ +75%", rate: 8, color: RATE_COLORS[8] },
-            { label: "+50–74%", rate: 7, color: RATE_COLORS[7] },
+            // { label: "≥ +75%", rate: 8, color: RATE_COLORS[8] },
+            { label: "≥ +50%", rate: 7, color: RATE_COLORS[7] },
             { label: "+25–49%", rate: 6, color: RATE_COLORS[6] },
             { label: "0–24%", rate: 5, color: RATE_COLORS[5] },
             { label: "< 0%", rate: 4, color: RATE_COLORS[4] },
@@ -914,7 +914,7 @@ export default function GainBasedWithdrawal() {
                         fontWeight: 700,
                       }}
                     >
-                      GAIN-BASED (4–8%)
+                      GAIN-BASED (4–7%)
                     </div>
                     <div style={{ fontSize: 10, color: "#555", marginTop: 2 }}>
                       Adapts to portfolio performance
