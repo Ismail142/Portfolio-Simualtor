@@ -88,6 +88,40 @@ type GBSimYear = {
   annualReturn: number;
 };
 
+type FixedSimYear = {
+  year: number;
+  calendarYear: number;
+  portfolioAfter: number;
+  withdrawal: number;
+};
+
+function simulateFixed(
+  costBasis: number,
+  fixedRate: number,
+  startYear: number,
+  endYear: number,
+): FixedSimYear[] {
+  let portfolio = costBasis;
+  const result: FixedSimYear[] = [
+    { year: 0, calendarYear: startYear, portfolioAfter: portfolio, withdrawal: 0 },
+  ];
+  const totalYears = endYear - startYear + 1;
+  for (let y = 1; y <= totalYears; y++) {
+    const calendarYear = startYear + y - 1;
+    const annualReturn = getHistoricalReturn(calendarYear);
+    const withdrawal = portfolio * (fixedRate / 100);
+    const afterWithdrawal = portfolio - withdrawal;
+    portfolio = afterWithdrawal * (1 + annualReturn / 100);
+    result.push({
+      year: y,
+      calendarYear,
+      portfolioAfter: Math.round(portfolio),
+      withdrawal: Math.round(withdrawal),
+    });
+  }
+  return result;
+}
+
 function simulate(
   costBasis: number,
   startYear: number,
@@ -180,6 +214,7 @@ export default function GainBasedWithdrawal() {
   const [startYear, setStartYear] = useState(2000);
   const [duration, setDuration] = useState<number | null>(30);
   const [calculated, setCalculated] = useState(false);
+  const [fixedRate, setFixedRate] = useState(6);
 
   const endYear = duration === null ? MAX_YEAR : Math.min(startYear + duration - 1, MAX_YEAR);
   const years = endYear - startYear + 1;
@@ -249,6 +284,11 @@ export default function GainBasedWithdrawal() {
     [costBasis, startYear, endYear],
   );
 
+  const fixedSimData = useMemo(
+    () => simulateFixed(costBasis, fixedRate, startYear, endYear),
+    [costBasis, fixedRate, startYear, endYear],
+  );
+
   const lastRow = simData[simData.length - 1];
   const finalBalance = lastRow.portfolioAfter;
   const grew = finalBalance > costBasis;
@@ -257,9 +297,19 @@ export default function GainBasedWithdrawal() {
   const avgWithdrawal = withdrawalRows.length > 0 ? totalWithdrawn / withdrawalRows.length : 0;
   const avgMonthlyWithdrawal = avgWithdrawal / 12;
 
+  const fixedLastRow = fixedSimData[fixedSimData.length - 1];
+  const fixedFinalBalance = fixedLastRow.portfolioAfter;
+  const fixedTotalWithdrawn = fixedSimData.slice(1).reduce((s, d) => s + d.withdrawal, 0);
+  const fixedAvgMonthlyWithdrawal =
+    fixedSimData.slice(1).reduce((s, d) => s + d.withdrawal, 0) / Math.max(1, years) / 12;
+
   const cagr =
     years > 0 && costBasis > 0
       ? (Math.pow(finalBalance / costBasis, 1 / years) - 1) * 100
+      : 0;
+  const fixedCagr =
+    years > 0 && costBasis > 0
+      ? (Math.pow(fixedFinalBalance / costBasis, 1 / years) - 1) * 100
       : 0;
 
   const retainedPct = (finalBalance / costBasis) * 100;
@@ -292,9 +342,10 @@ export default function GainBasedWithdrawal() {
       ? `Portfolio grew ${retainedPct.toFixed(0)}% of cost basis`
       : `${retainedPct.toFixed(1)}% of cost basis remains`;
 
-  const chartData = simData.map((d) => ({
+  const chartData = simData.map((d, i) => ({
     calendarYear: d.calendarYear,
     balance: d.portfolioAfter,
+    fixedBalance: fixedSimData[i]?.portfolioAfter ?? 0,
     withdrawal: d.withdrawal,
     return: d.annualReturn,
   }));
@@ -728,12 +779,143 @@ export default function GainBasedWithdrawal() {
             </div>
           </div>
 
+          {/* Comparison: rate picker + head-to-head cards */}
+          <div className="section">
+            <h2 className="section-title">HEAD-TO-HEAD COMPARISON</h2>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 11, color: "#666", letterSpacing: 1 }}>COMPARE AGAINST FIXED RATE:</span>
+              {[4, 5, 6, 7, 8].map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setFixedRate(r)}
+                  style={{
+                    background: fixedRate === r ? "#00d4ff22" : "#0e0e18",
+                    border: `1px solid ${fixedRate === r ? "#00d4ff" : "#1a1a28"}`,
+                    color: fixedRate === r ? "#00d4ff" : "#555",
+                    fontFamily: "'DM Mono', monospace",
+                    fontSize: 13,
+                    fontWeight: fixedRate === r ? 700 : 400,
+                    padding: "5px 14px",
+                    borderRadius: 20,
+                    cursor: "pointer",
+                    transition: "all 0.15s",
+                  }}
+                >
+                  {r}%
+                </button>
+              ))}
+            </div>
+
+            {/* Side-by-side metric rows */}
+            {(() => {
+              const gbWins = finalBalance > fixedFinalBalance;
+              const gbWithdrawMore = totalWithdrawn > fixedTotalWithdrawn;
+              return (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 0, alignItems: "stretch" }}>
+                  {/* Header row */}
+                  <div style={{ background: "#0e0e18", borderRadius: "10px 0 0 0", padding: "12px 18px", borderBottom: "1px solid #15151f" }}>
+                    <div style={{ fontSize: 11, color: "#00ff87", letterSpacing: 1.5, fontWeight: 700 }}>GAIN-BASED (4–8%)</div>
+                    <div style={{ fontSize: 10, color: "#555", marginTop: 2 }}>Adapts to portfolio performance</div>
+                  </div>
+                  <div style={{ background: "#0a0a14", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 12px", borderBottom: "1px solid #15151f", fontSize: 10, color: "#333" }}>VS</div>
+                  <div style={{ background: "#0e0e18", borderRadius: "0 10px 0 0", padding: "12px 18px", borderBottom: "1px solid #15151f" }}>
+                    <div style={{ fontSize: 11, color: "#00d4ff", letterSpacing: 1.5, fontWeight: 700 }}>FIXED {fixedRate}% ANNUAL</div>
+                    <div style={{ fontSize: 10, color: "#555", marginTop: 2 }}>Constant rate every year</div>
+                  </div>
+
+                  {/* Final balance */}
+                  {[
+                    {
+                      label: "FINAL BALANCE",
+                      gbVal: finalBalance, fxVal: fixedFinalBalance,
+                      gbFmt: fmt(finalBalance), fxFmt: fmt(fixedFinalBalance),
+                      gbSub: exchangeRate ? fmtGHS(finalBalance, exchangeRate) ?? "" : "",
+                      fxSub: exchangeRate ? fmtGHS(fixedFinalBalance, exchangeRate) ?? "" : "",
+                      gbBetter: finalBalance >= fixedFinalBalance,
+                    },
+                    {
+                      label: "TOTAL WITHDRAWN",
+                      gbVal: totalWithdrawn, fxVal: fixedTotalWithdrawn,
+                      gbFmt: fmt(totalWithdrawn), fxFmt: fmt(fixedTotalWithdrawn),
+                      gbSub: exchangeRate ? fmtGHS(totalWithdrawn, exchangeRate) ?? "" : "",
+                      fxSub: exchangeRate ? fmtGHS(fixedTotalWithdrawn, exchangeRate) ?? "" : "",
+                      gbBetter: totalWithdrawn >= fixedTotalWithdrawn,
+                    },
+                    {
+                      label: "AVG MONTHLY INCOME",
+                      gbVal: avgMonthlyWithdrawal, fxVal: fixedAvgMonthlyWithdrawal,
+                      gbFmt: fmt(avgMonthlyWithdrawal) + "/mo", fxFmt: fmt(fixedAvgMonthlyWithdrawal) + "/mo",
+                      gbSub: exchangeRate ? (fmtGHS(avgMonthlyWithdrawal, exchangeRate) ?? "") + "/mo" : "",
+                      fxSub: exchangeRate ? (fmtGHS(fixedAvgMonthlyWithdrawal, exchangeRate) ?? "") + "/mo" : "",
+                      gbBetter: avgMonthlyWithdrawal >= fixedAvgMonthlyWithdrawal,
+                    },
+                    {
+                      label: "CAGR",
+                      gbVal: cagr, fxVal: fixedCagr,
+                      gbFmt: `${cagr >= 0 ? "+" : ""}${cagr.toFixed(2)}%`,
+                      fxFmt: `${fixedCagr >= 0 ? "+" : ""}${fixedCagr.toFixed(2)}%`,
+                      gbSub: "", fxSub: "",
+                      gbBetter: cagr >= fixedCagr,
+                    },
+                  ].map(({ label, gbFmt, fxFmt, gbSub, fxSub, gbBetter }, i) => {
+                    const isLast = i === 3;
+                    return (
+                      <div key={label} style={{ display: "contents" }}>
+                        <div style={{ background: "#0e0e18", borderRadius: isLast ? "0 0 0 10px" : 0, padding: "14px 18px", borderBottom: isLast ? "none" : "1px solid #15151f" }}>
+                          <div style={{ fontSize: 10, color: "#555", letterSpacing: 1, marginBottom: 4 }}>{label}</div>
+                          <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 24, color: gbBetter ? "#00ff87" : "#aaa", lineHeight: 1 }}>
+                            {gbFmt}
+                            {gbBetter && <span style={{ fontSize: 12, color: "#00ff87", marginLeft: 8 }}>▲</span>}
+                          </div>
+                          {gbSub && <div style={{ fontSize: 11, color: "#555", marginTop: 3 }}>{gbSub}</div>}
+                        </div>
+                        <div style={{ background: "#0a0a14", display: "flex", alignItems: "center", justifyContent: "center", borderBottom: isLast ? "none" : "1px solid #15151f" }} />
+                        <div style={{ background: "#0e0e18", borderRadius: isLast ? "0 0 10px 0" : 0, padding: "14px 18px", borderBottom: isLast ? "none" : "1px solid #15151f" }}>
+                          <div style={{ fontSize: 10, color: "#555", letterSpacing: 1, marginBottom: 4 }}>{label}</div>
+                          <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 24, color: !gbBetter ? "#00d4ff" : "#aaa", lineHeight: 1 }}>
+                            {fxFmt}
+                            {!gbBetter && <span style={{ fontSize: 12, color: "#00d4ff", marginLeft: 8 }}>▲</span>}
+                          </div>
+                          {fxSub && <div style={{ fontSize: 11, color: "#555", marginTop: 3 }}>{fxSub}</div>}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Verdict */}
+                  <div style={{ gridColumn: "1 / -1", background: gbWins && gbWithdrawMore ? "#00ff8710" : "#00d4ff10", border: `1px solid ${gbWins && gbWithdrawMore ? "#00ff8733" : "#00d4ff33"}`, borderTop: "none", borderRadius: "0 0 10px 10px", padding: "12px 18px", display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
+                    <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, color: gbWins && gbWithdrawMore ? "#00ff87" : "#00d4ff" }}>
+                      {gbWins && gbWithdrawMore
+                        ? "GAIN-BASED WINS ON BOTH FRONTS"
+                        : !gbWins && !gbWithdrawMore
+                          ? `FIXED ${fixedRate}% WINS ON BOTH FRONTS`
+                          : gbWins
+                            ? `GAIN-BASED PRESERVES MORE · FIXED ${fixedRate}% PAYS OUT MORE`
+                            : `FIXED ${fixedRate}% PRESERVES MORE · GAIN-BASED PAYS OUT MORE`}
+                    </div>
+                    <div style={{ fontSize: 11, color: "#555" }}>
+                      Balance diff: <span style={{ color: "#aaa" }}>{fmt(Math.abs(finalBalance - fixedFinalBalance))}</span>
+                      {" · "}
+                      Withdrawal diff: <span style={{ color: "#aaa" }}>{fmt(Math.abs(totalWithdrawn - fixedTotalWithdrawn))}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+
           {/* Chart */}
           <div className="section">
-            <h2 className="section-title">PORTFOLIO BALANCE & ANNUAL WITHDRAWAL</h2>
+            <h2 className="section-title">PORTFOLIO BALANCE OVER TIME</h2>
             <p style={{ color: "#666", fontSize: 12, marginTop: -8, marginBottom: 14 }}>
-              Balance (area, left axis) · Withdrawal (bars, right axis) · Red shade =
-              negative-return years
+              <span style={{ color: "#00ff87" }}>——</span> Gain-based balance
+              {" · "}
+              <span style={{ color: "#00d4ff" }}>- - -</span> Fixed {fixedRate}% balance
+              {" · "}
+              <span style={{ color: "#ffbe0b" }}>▌</span> Gain-based withdrawal (right axis)
+              {" · "}
+              Red shade = down years
             </p>
             <div style={{ width: "100%", height: 380 }}>
               <ResponsiveContainer>
@@ -789,8 +971,20 @@ export default function GainBasedWithdrawal() {
                   <Area
                     yAxisId="bal"
                     type="monotone"
+                    dataKey="fixedBalance"
+                    name={`Fixed ${fixedRate}% Balance`}
+                    stroke="#00d4ff"
+                    strokeWidth={2}
+                    strokeDasharray="6 3"
+                    fill="none"
+                    dot={false}
+                    activeDot={{ r: 3, fill: "#00d4ff" }}
+                  />
+                  <Area
+                    yAxisId="bal"
+                    type="monotone"
                     dataKey="balance"
-                    name="Balance"
+                    name="Gain-Based Balance"
                     stroke="#00ff87"
                     strokeWidth={2.5}
                     fill="url(#gbGrad)"
@@ -800,7 +994,7 @@ export default function GainBasedWithdrawal() {
                   <Bar
                     yAxisId="wd"
                     dataKey="withdrawal"
-                    name="Withdrawal"
+                    name="Gain-Based Withdrawal"
                     fill="#ffbe0b"
                     fillOpacity={0.55}
                     radius={[2, 2, 0, 0]}
