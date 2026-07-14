@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Area,
   Bar,
@@ -205,9 +205,11 @@ function GBTooltip({
 
 export default function GainBasedWithdrawal() {
   const [draftCostBasis, setDraftCostBasis] = useState<number | "">(300000);
+  const [draftCostBasisGHS, setDraftCostBasisGHS] = useState<number | "">("");
   const [draftExchangeRate, setDraftExchangeRate] = useState<number | "">(15);
   const [draftStartYear, setDraftStartYear] = useState<number>(2000);
   const [draftDuration, setDraftDuration] = useState<number | "">(30);
+  const lastCostEdited = useRef<"usd" | "ghs">("usd");
 
   const [costBasis, setCostBasis] = useState(300000);
   const [exchangeRate, setExchangeRate] = useState<number | null>(null);
@@ -232,6 +234,7 @@ export default function GainBasedWithdrawal() {
       if (!raw) return;
       const s = JSON.parse(raw) as {
         costBasis?: number;
+        costBasisGHS?: number;
         exchangeRate?: number;
         startYear?: number;
         duration?: number;
@@ -240,7 +243,9 @@ export default function GainBasedWithdrawal() {
       const er = s.exchangeRate && s.exchangeRate > 0 ? s.exchangeRate : null;
       const sy = Math.max(MIN_YEAR, Math.min(MAX_YEAR, Math.floor(Number(s.startYear) || 2000)));
       const dur = s.duration != null ? Math.max(1, Math.floor(Number(s.duration))) : null;
+      const cbGHS = s.costBasisGHS && s.costBasisGHS > 0 ? s.costBasisGHS : er ? cb * er : "";
       setDraftCostBasis(cb);
+      setDraftCostBasisGHS(cbGHS);
       setDraftStartYear(sy);
       setDraftDuration(dur ?? "");
       if (er) setDraftExchangeRate(er);
@@ -251,6 +256,33 @@ export default function GainBasedWithdrawal() {
       setCalculated(true);
     } catch { }
   }, []);
+
+  const handleCostUSDChange = (val: string) => {
+    const n = val === "" ? "" : +val;
+    setDraftCostBasis(n);
+    lastCostEdited.current = "usd";
+    const er = typeof draftExchangeRate === "number" && draftExchangeRate > 0 ? draftExchangeRate : null;
+    setDraftCostBasisGHS(typeof n === "number" && er ? n * er : "");
+  };
+
+  const handleCostGHSChange = (val: string) => {
+    const n = val === "" ? "" : +val;
+    setDraftCostBasisGHS(n);
+    lastCostEdited.current = "ghs";
+    const er = typeof draftExchangeRate === "number" && draftExchangeRate > 0 ? draftExchangeRate : null;
+    setDraftCostBasis(typeof n === "number" && er ? n / er : "");
+  };
+
+  const handleExchangeRateChange = (val: string) => {
+    const er = val === "" ? "" : +val;
+    setDraftExchangeRate(er);
+    const erNum = typeof er === "number" && er > 0 ? er : null;
+    if (lastCostEdited.current === "usd" && typeof draftCostBasis === "number" && erNum) {
+      setDraftCostBasisGHS(draftCostBasis * erNum);
+    } else if (lastCostEdited.current === "ghs" && typeof draftCostBasisGHS === "number" && erNum) {
+      setDraftCostBasis(draftCostBasisGHS / erNum);
+    }
+  };
 
   const draftDurationVal = draftDuration === "" ? null : draftDuration;
   const isDirty =
@@ -264,7 +296,12 @@ export default function GainBasedWithdrawal() {
     const er = typeof draftExchangeRate === "number" && draftExchangeRate > 0 ? draftExchangeRate : null;
     const sy = draftStartYear;
     const dur = draftDuration === "" ? null : Math.max(1, Math.floor(Number(draftDuration)));
+    const cbGHS =
+      typeof draftCostBasisGHS === "number" && draftCostBasisGHS > 0
+        ? draftCostBasisGHS
+        : er ? cb * er : null;
     setDraftCostBasis(cb);
+    if (cbGHS) setDraftCostBasisGHS(cbGHS);
     setDraftDuration(dur ?? "");
     setCostBasis(cb);
     setExchangeRate(er);
@@ -274,7 +311,7 @@ export default function GainBasedWithdrawal() {
     try {
       window.localStorage.setItem(
         GB_STORAGE_KEY,
-        JSON.stringify({ costBasis: cb, exchangeRate: er, startYear: sy, duration: dur ?? null }),
+        JSON.stringify({ costBasis: cb, costBasisGHS: cbGHS, exchangeRate: er, startYear: sy, duration: dur ?? null }),
       );
     } catch { }
   };
@@ -374,10 +411,10 @@ export default function GainBasedWithdrawal() {
           gap: 16,
         }}
       >
-        {/* Cost Basis */}
+        {/* Cost Basis USD */}
         <div className="stat-card slider-wrap">
           <div className="slider-label">
-            <span>Cost Basis / Total Invested (USD)</span>
+            <span>Total Invested / Cost Basis (USD)</span>
             <span className="slider-val">{fmt(Number(draftCostBasis) || 0)}</span>
           </div>
           <input
@@ -387,15 +424,35 @@ export default function GainBasedWithdrawal() {
             step={10000}
             placeholder="e.g. 300000"
             value={draftCostBasis}
-            onChange={(e) =>
-              setDraftCostBasis(e.target.value === "" ? "" : +e.target.value)
-            }
+            onChange={(e) => handleCostUSDChange(e.target.value)}
           />
-          {typeof draftExchangeRate === "number" && draftExchangeRate > 0 && typeof draftCostBasis === "number" && (
-            <div style={{ fontSize: 11, color: "#555", letterSpacing: 1, marginTop: 4 }}>
-              ≈ {fmtGHS(draftCostBasis, draftExchangeRate) ?? "—"} GHS
-            </div>
-          )}
+        </div>
+
+        {/* Cost Basis GHS */}
+        <div className="stat-card slider-wrap">
+          <div className="slider-label">
+            <span>Total Invested / Cost Basis (GHS)</span>
+            <span className="slider-val">
+              {typeof draftCostBasisGHS === "number" && draftCostBasisGHS > 0
+                ? (fmtGHS(draftCostBasisGHS, 1) ?? "—")
+                : typeof draftCostBasis === "number" && typeof draftExchangeRate === "number" && draftExchangeRate > 0
+                  ? (fmtGHS(draftCostBasis * draftExchangeRate, 1) ?? "—")
+                  : "—"}
+            </span>
+          </div>
+          <input
+            className="num-input"
+            type="number"
+            min={1}
+            step={100000}
+            placeholder="e.g. 4500000"
+            value={
+              typeof draftCostBasisGHS === "number" && draftCostBasisGHS > 0
+                ? parseFloat(draftCostBasisGHS.toFixed(2))
+                : ""
+            }
+            onChange={(e) => handleCostGHSChange(e.target.value)}
+          />
         </div>
 
         {/* Exchange Rate */}
@@ -413,9 +470,7 @@ export default function GainBasedWithdrawal() {
             step={0.1}
             placeholder="optional"
             value={typeof draftExchangeRate === "number" ? draftExchangeRate : ""}
-            onChange={(e) =>
-              setDraftExchangeRate(e.target.value === "" ? "" : +e.target.value)
-            }
+            onChange={(e) => handleExchangeRateChange(e.target.value)}
           />
           <div style={{ fontSize: 11, color: "#555", letterSpacing: 1, marginTop: 4 }}>
             OPTIONAL · ENABLES GHS COLUMNS
