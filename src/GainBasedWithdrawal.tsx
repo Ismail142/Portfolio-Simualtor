@@ -9,33 +9,15 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { RETURNS } from "./data/historicalReturns";
 
 const GB_STORAGE_KEY = "gain-based-withdrawal-inputs";
 
-const HISTORICAL_RETURNS: Record<number, number> = {
-  2025: 17.88, 2024: 25.02, 2023: 26.29, 2022: -18.11, 2021: 28.71,
-  2020: 18.4,  2019: 31.49, 2018: -4.38, 2017: 21.83,  2016: 11.96,
-  2015: 1.38,  2014: 13.69, 2013: 32.39, 2012: 16.0,   2011: 2.11,
-  2010: 15.06, 2009: 26.46, 2008: -37.0, 2007: 5.49,   2006: 15.79,
-  2005: 4.91,  2004: 10.88, 2003: 28.68, 2002: -22.1,  2001: -11.89,
-  2000: -9.1,  1999: 21.04, 1998: 28.58, 1997: 33.36,  1996: 22.96,
-  1995: 37.58, 1994: 1.32,  1993: 10.08, 1992: 7.62,   1991: 30.47,
-  1990: -3.1,  1989: 31.69, 1988: 16.61, 1987: 5.25,   1986: 18.67,
-  1985: 31.73, 1984: 6.27,  1983: 22.56, 1982: 21.55,  1981: -4.91,
-  1980: 32.42, 1979: 18.44, 1978: 6.56,  1977: -7.18,  1976: 23.84,
-  1975: 37.2,  1974: -26.47,1973: -14.66,1972: 18.98,  1971: 14.31,
-  1970: 4.01,  1969: -8.5,  1968: 11.06, 1967: 23.98,  1966: -10.06,
-  1965: 12.45, 1964: 16.48, 1963: 22.8,  1962: -8.73,  1961: 26.89,
-  1960: 0.47,  1959: 11.96, 1958: 43.36, 1957: -10.78, 1956: 6.56,
-  1955: 31.56, 1954: 52.62, 1953: -0.99, 1952: 18.37,  1951: 24.02,
-  1950: 31.71, 1949: 18.79, 1948: 5.5,   1947: 5.71,   1946: -8.07,
-  1945: 36.44, 1944: 19.75, 1943: 25.9,  1942: 20.34,  1941: -11.59,
-  1940: -9.78, 1939: -0.41, 1938: 31.12, 1937: -35.03, 1936: 33.92,
-  1935: 47.67, 1934: -1.44, 1933: 53.99, 1932: -8.19,  1931: -43.34,
-  1930: -24.9, 1929: -8.42, 1928: 43.61, 1927: 37.49,  1926: 11.62,
-};
+const HISTORICAL_RETURNS = RETURNS;
 
-const DATA_YEARS = Object.keys(HISTORICAL_RETURNS).map(Number).sort((a, b) => a - b);
+const DATA_YEARS = Object.keys(HISTORICAL_RETURNS)
+  .map(Number)
+  .sort((a, b) => a - b);
 const MIN_YEAR = DATA_YEARS[0];
 const MAX_YEAR = DATA_YEARS[DATA_YEARS.length - 1];
 
@@ -47,7 +29,7 @@ function getWithdrawalRate(gainPct: number): number {
   if (gainPct >= 75) return 8;
   if (gainPct >= 50) return 7;
   if (gainPct >= 25) return 6;
-  if (gainPct >= 0)  return 5;
+  if (gainPct >= 0) return 5;
   return 4;
 }
 
@@ -121,11 +103,7 @@ function simulateFixed(
   return result;
 }
 
-function simulate(
-  costBasis: number,
-  startYear: number,
-  endYear: number,
-): GBSimYear[] {
+function simulate(costBasis: number, startYear: number, endYear: number): GBSimYear[] {
   let portfolio = costBasis;
   const result: GBSimYear[] = [];
 
@@ -233,8 +211,7 @@ export default function GainBasedWithdrawal() {
       ? MAX_YEAR
       : Math.min(draftStartYear + (draftDuration as number) - 1, MAX_YEAR);
   const isCapped =
-    draftDuration !== "" &&
-    draftStartYear + (draftDuration as number) - 1 > MAX_YEAR;
+    draftDuration !== "" && draftStartYear + (draftDuration as number) - 1 > MAX_YEAR;
 
   useEffect(() => {
     try {
@@ -265,14 +242,17 @@ export default function GainBasedWithdrawal() {
       setDuration(dur);
       setFixedRate(fr);
       setCalculated(true);
-    } catch { }
+    } catch {
+      throw new Error("Failed to load saved inputs from localStorage");
+    }
   }, []);
 
   const handleCostUSDChange = (val: string) => {
     const n = val === "" ? "" : +val;
     setDraftCostBasis(n);
     lastCostEdited.current = "usd";
-    const er = typeof draftExchangeRate === "number" && draftExchangeRate > 0 ? draftExchangeRate : null;
+    const er =
+      typeof draftExchangeRate === "number" && draftExchangeRate > 0 ? draftExchangeRate : null;
     setDraftCostBasisGHS(typeof n === "number" && er ? n * er : "");
   };
 
@@ -280,7 +260,8 @@ export default function GainBasedWithdrawal() {
     const n = val === "" ? "" : +val;
     setDraftCostBasisGHS(n);
     lastCostEdited.current = "ghs";
-    const er = typeof draftExchangeRate === "number" && draftExchangeRate > 0 ? draftExchangeRate : null;
+    const er =
+      typeof draftExchangeRate === "number" && draftExchangeRate > 0 ? draftExchangeRate : null;
     setDraftCostBasis(typeof n === "number" && er ? n / er : "");
   };
 
@@ -304,13 +285,16 @@ export default function GainBasedWithdrawal() {
 
   const handleCalculate = () => {
     const cb = Math.max(1, Math.floor(Number(draftCostBasis) || 1));
-    const er = typeof draftExchangeRate === "number" && draftExchangeRate > 0 ? draftExchangeRate : null;
+    const er =
+      typeof draftExchangeRate === "number" && draftExchangeRate > 0 ? draftExchangeRate : null;
     const sy = draftStartYear;
     const dur = draftDuration === "" ? null : Math.max(1, Math.floor(Number(draftDuration)));
     const cbGHS =
       typeof draftCostBasisGHS === "number" && draftCostBasisGHS > 0
         ? draftCostBasisGHS
-        : er ? cb * er : null;
+        : er
+          ? cb * er
+          : null;
     setDraftCostBasis(cb);
     if (cbGHS) setDraftCostBasisGHS(cbGHS);
     setDraftDuration(dur ?? "");
@@ -322,9 +306,17 @@ export default function GainBasedWithdrawal() {
     try {
       window.localStorage.setItem(
         GB_STORAGE_KEY,
-        JSON.stringify({ costBasis: cb, costBasisGHS: cbGHS, exchangeRate: er, startYear: sy, duration: dur ?? null }),
+        JSON.stringify({
+          costBasis: cb,
+          costBasisGHS: cbGHS,
+          exchangeRate: er,
+          startYear: sy,
+          duration: dur ?? null,
+        }),
       );
-    } catch { }
+    } catch {
+      throw new Error("Failed to save inputs to localStorage");
+    }
   };
 
   const simData = useMemo(
@@ -352,13 +344,9 @@ export default function GainBasedWithdrawal() {
     fixedSimData.slice(1).reduce((s, d) => s + d.withdrawal, 0) / Math.max(1, years) / 12;
 
   const cagr =
-    years > 0 && costBasis > 0
-      ? (Math.pow(finalBalance / costBasis, 1 / years) - 1) * 100
-      : 0;
+    years > 0 && costBasis > 0 ? (Math.pow(finalBalance / costBasis, 1 / years) - 1) * 100 : 0;
   const fixedCagr =
-    years > 0 && costBasis > 0
-      ? (Math.pow(fixedFinalBalance / costBasis, 1 / years) - 1) * 100
-      : 0;
+    years > 0 && costBasis > 0 ? (Math.pow(fixedFinalBalance / costBasis, 1 / years) - 1) * 100 : 0;
 
   const retainedPct = (finalBalance / costBasis) * 100;
   const survivalStatus: "strong" | "survived" | "atrisk" | "depleted" =
@@ -447,7 +435,9 @@ export default function GainBasedWithdrawal() {
             <span className="slider-val">
               {typeof draftCostBasisGHS === "number" && draftCostBasisGHS > 0
                 ? (fmtGHS(draftCostBasisGHS, 1) ?? "—")
-                : typeof draftCostBasis === "number" && typeof draftExchangeRate === "number" && draftExchangeRate > 0
+                : typeof draftCostBasis === "number" &&
+                    typeof draftExchangeRate === "number" &&
+                    draftExchangeRate > 0
                   ? (fmtGHS(draftCostBasis * draftExchangeRate, 1) ?? "—")
                   : "—"}
             </span>
@@ -557,9 +547,7 @@ export default function GainBasedWithdrawal() {
       </div>
 
       <div className="calc-bar">
-        <span className="calc-hint">
-          {isDirty ? "Unapplied changes — press Calculate" : ""}
-        </span>
+        <span className="calc-hint">{isDirty ? "Unapplied changes — press Calculate" : ""}</span>
         <button
           className="calc-btn"
           type="button"
@@ -584,9 +572,9 @@ export default function GainBasedWithdrawal() {
         }}
       >
         <span style={{ color: "#888", letterSpacing: 1 }}>STRATEGY · </span>
-        Simulation starts at cost basis. Each year the withdrawal rate adjusts based on how much
-        the portfolio has grown above the original investment. Withdrawal taken at start of year,
-        then the S&P 500 return applies to the remainder.
+        Simulation starts at cost basis. Each year the withdrawal rate adjusts based on how much the
+        portfolio has grown above the original investment. Withdrawal taken at start of year, then
+        the S&P 500 return applies to the remainder.
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
           {[
             { label: "≥ +75%", rate: 8, color: RATE_COLORS[8] },
@@ -849,8 +837,18 @@ export default function GainBasedWithdrawal() {
           {/* Comparison: rate picker + head-to-head cards */}
           <div className="section">
             <h2 className="section-title">HEAD-TO-HEAD COMPARISON</h2>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 11, color: "#666", letterSpacing: 1 }}>COMPARE AGAINST FIXED RATE:</span>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                marginBottom: 16,
+                flexWrap: "wrap",
+              }}
+            >
+              <span style={{ fontSize: 11, color: "#666", letterSpacing: 1 }}>
+                COMPARE AGAINST FIXED RATE:
+              </span>
               {[4, 5, 6, 7, 8].map((r) => (
                 <button
                   key={r}
@@ -860,8 +858,13 @@ export default function GainBasedWithdrawal() {
                     try {
                       const raw = window.localStorage.getItem(GB_STORAGE_KEY);
                       const s = raw ? JSON.parse(raw) : {};
-                      window.localStorage.setItem(GB_STORAGE_KEY, JSON.stringify({ ...s, fixedRate: r }));
-                    } catch { }
+                      window.localStorage.setItem(
+                        GB_STORAGE_KEY,
+                        JSON.stringify({ ...s, fixedRate: r }),
+                      );
+                    } catch {
+                      throw new Error("Failed to save fixed rate to localStorage");
+                    }
                   }}
                   style={{
                     background: fixedRate === r ? "#00d4ff22" : "#0e0e18",
@@ -886,80 +889,233 @@ export default function GainBasedWithdrawal() {
               const gbWins = finalBalance > fixedFinalBalance;
               const gbWithdrawMore = totalWithdrawn > fixedTotalWithdrawn;
               return (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 0, alignItems: "stretch" }}>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr auto 1fr",
+                    gap: 0,
+                    alignItems: "stretch",
+                  }}
+                >
                   {/* Header row */}
-                  <div style={{ background: "#0e0e18", borderRadius: "10px 0 0 0", padding: "12px 18px", borderBottom: "1px solid #15151f" }}>
-                    <div style={{ fontSize: 11, color: "#00ff87", letterSpacing: 1.5, fontWeight: 700 }}>GAIN-BASED (4–8%)</div>
-                    <div style={{ fontSize: 10, color: "#555", marginTop: 2 }}>Adapts to portfolio performance</div>
+                  <div
+                    style={{
+                      background: "#0e0e18",
+                      borderRadius: "10px 0 0 0",
+                      padding: "12px 18px",
+                      borderBottom: "1px solid #15151f",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: "#00ff87",
+                        letterSpacing: 1.5,
+                        fontWeight: 700,
+                      }}
+                    >
+                      GAIN-BASED (4–8%)
+                    </div>
+                    <div style={{ fontSize: 10, color: "#555", marginTop: 2 }}>
+                      Adapts to portfolio performance
+                    </div>
                   </div>
-                  <div style={{ background: "#0a0a14", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 12px", borderBottom: "1px solid #15151f", fontSize: 10, color: "#333" }}>VS</div>
-                  <div style={{ background: "#0e0e18", borderRadius: "0 10px 0 0", padding: "12px 18px", borderBottom: "1px solid #15151f" }}>
-                    <div style={{ fontSize: 11, color: "#00d4ff", letterSpacing: 1.5, fontWeight: 700 }}>FIXED {fixedRate}% ANNUAL</div>
-                    <div style={{ fontSize: 10, color: "#555", marginTop: 2 }}>Constant rate every year</div>
+                  <div
+                    style={{
+                      background: "#0a0a14",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: "0 12px",
+                      borderBottom: "1px solid #15151f",
+                      fontSize: 10,
+                      color: "#333",
+                    }}
+                  >
+                    VS
+                  </div>
+                  <div
+                    style={{
+                      background: "#0e0e18",
+                      borderRadius: "0 10px 0 0",
+                      padding: "12px 18px",
+                      borderBottom: "1px solid #15151f",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: "#00d4ff",
+                        letterSpacing: 1.5,
+                        fontWeight: 700,
+                      }}
+                    >
+                      FIXED {fixedRate}% ANNUAL
+                    </div>
+                    <div style={{ fontSize: 10, color: "#555", marginTop: 2 }}>
+                      Constant rate every year
+                    </div>
                   </div>
 
                   {/* Final balance */}
                   {[
                     {
                       label: "FINAL BALANCE",
-                      gbVal: finalBalance, fxVal: fixedFinalBalance,
-                      gbFmt: fmt(finalBalance), fxFmt: fmt(fixedFinalBalance),
-                      gbSub: exchangeRate ? fmtGHS(finalBalance, exchangeRate) ?? "" : "",
-                      fxSub: exchangeRate ? fmtGHS(fixedFinalBalance, exchangeRate) ?? "" : "",
+                      gbVal: finalBalance,
+                      fxVal: fixedFinalBalance,
+                      gbFmt: fmt(finalBalance),
+                      fxFmt: fmt(fixedFinalBalance),
+                      gbSub: exchangeRate ? (fmtGHS(finalBalance, exchangeRate) ?? "") : "",
+                      fxSub: exchangeRate ? (fmtGHS(fixedFinalBalance, exchangeRate) ?? "") : "",
                       gbBetter: finalBalance >= fixedFinalBalance,
                     },
                     {
                       label: "TOTAL WITHDRAWN",
-                      gbVal: totalWithdrawn, fxVal: fixedTotalWithdrawn,
-                      gbFmt: fmt(totalWithdrawn), fxFmt: fmt(fixedTotalWithdrawn),
-                      gbSub: exchangeRate ? fmtGHS(totalWithdrawn, exchangeRate) ?? "" : "",
-                      fxSub: exchangeRate ? fmtGHS(fixedTotalWithdrawn, exchangeRate) ?? "" : "",
+                      gbVal: totalWithdrawn,
+                      fxVal: fixedTotalWithdrawn,
+                      gbFmt: fmt(totalWithdrawn),
+                      fxFmt: fmt(fixedTotalWithdrawn),
+                      gbSub: exchangeRate ? (fmtGHS(totalWithdrawn, exchangeRate) ?? "") : "",
+                      fxSub: exchangeRate ? (fmtGHS(fixedTotalWithdrawn, exchangeRate) ?? "") : "",
                       gbBetter: totalWithdrawn >= fixedTotalWithdrawn,
                     },
                     {
                       label: "AVG MONTHLY INCOME",
-                      gbVal: avgMonthlyWithdrawal, fxVal: fixedAvgMonthlyWithdrawal,
-                      gbFmt: fmt(avgMonthlyWithdrawal) + "/mo", fxFmt: fmt(fixedAvgMonthlyWithdrawal) + "/mo",
-                      gbSub: exchangeRate ? (fmtGHS(avgMonthlyWithdrawal, exchangeRate) ?? "") + "/mo" : "",
-                      fxSub: exchangeRate ? (fmtGHS(fixedAvgMonthlyWithdrawal, exchangeRate) ?? "") + "/mo" : "",
+                      gbVal: avgMonthlyWithdrawal,
+                      fxVal: fixedAvgMonthlyWithdrawal,
+                      gbFmt: fmt(avgMonthlyWithdrawal) + "/mo",
+                      fxFmt: fmt(fixedAvgMonthlyWithdrawal) + "/mo",
+                      gbSub: exchangeRate
+                        ? (fmtGHS(avgMonthlyWithdrawal, exchangeRate) ?? "") + "/mo"
+                        : "",
+                      fxSub: exchangeRate
+                        ? (fmtGHS(fixedAvgMonthlyWithdrawal, exchangeRate) ?? "") + "/mo"
+                        : "",
                       gbBetter: avgMonthlyWithdrawal >= fixedAvgMonthlyWithdrawal,
                     },
                     {
                       label: "CAGR",
-                      gbVal: cagr, fxVal: fixedCagr,
+                      gbVal: cagr,
+                      fxVal: fixedCagr,
                       gbFmt: `${cagr >= 0 ? "+" : ""}${cagr.toFixed(2)}%`,
                       fxFmt: `${fixedCagr >= 0 ? "+" : ""}${fixedCagr.toFixed(2)}%`,
-                      gbSub: "", fxSub: "",
+                      gbSub: "",
+                      fxSub: "",
                       gbBetter: cagr >= fixedCagr,
                     },
                   ].map(({ label, gbFmt, fxFmt, gbSub, fxSub, gbBetter }, i) => {
                     const isLast = i === 3;
                     return (
                       <div key={label} style={{ display: "contents" }}>
-                        <div style={{ background: "#0e0e18", borderRadius: isLast ? "0 0 0 10px" : 0, padding: "14px 18px", borderBottom: isLast ? "none" : "1px solid #15151f" }}>
-                          <div style={{ fontSize: 10, color: "#555", letterSpacing: 1, marginBottom: 4 }}>{label}</div>
-                          <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 24, color: gbBetter ? "#00ff87" : "#aaa", lineHeight: 1 }}>
+                        <div
+                          style={{
+                            background: "#0e0e18",
+                            borderRadius: isLast ? "0 0 0 10px" : 0,
+                            padding: "14px 18px",
+                            borderBottom: isLast ? "none" : "1px solid #15151f",
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontSize: 10,
+                              color: "#555",
+                              letterSpacing: 1,
+                              marginBottom: 4,
+                            }}
+                          >
+                            {label}
+                          </div>
+                          <div
+                            style={{
+                              fontFamily: "'Bebas Neue', sans-serif",
+                              fontSize: 24,
+                              color: gbBetter ? "#00ff87" : "#aaa",
+                              lineHeight: 1,
+                            }}
+                          >
                             {gbFmt}
-                            {gbBetter && <span style={{ fontSize: 12, color: "#00ff87", marginLeft: 8 }}>▲</span>}
+                            {gbBetter && (
+                              <span style={{ fontSize: 12, color: "#00ff87", marginLeft: 8 }}>
+                                ▲
+                              </span>
+                            )}
                           </div>
-                          {gbSub && <div style={{ fontSize: 11, color: "#555", marginTop: 3 }}>{gbSub}</div>}
+                          {gbSub && (
+                            <div style={{ fontSize: 11, color: "#555", marginTop: 3 }}>{gbSub}</div>
+                          )}
                         </div>
-                        <div style={{ background: "#0a0a14", display: "flex", alignItems: "center", justifyContent: "center", borderBottom: isLast ? "none" : "1px solid #15151f" }} />
-                        <div style={{ background: "#0e0e18", borderRadius: isLast ? "0 0 10px 0" : 0, padding: "14px 18px", borderBottom: isLast ? "none" : "1px solid #15151f" }}>
-                          <div style={{ fontSize: 10, color: "#555", letterSpacing: 1, marginBottom: 4 }}>{label}</div>
-                          <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 24, color: !gbBetter ? "#00d4ff" : "#aaa", lineHeight: 1 }}>
-                            {fxFmt}
-                            {!gbBetter && <span style={{ fontSize: 12, color: "#00d4ff", marginLeft: 8 }}>▲</span>}
+                        <div
+                          style={{
+                            background: "#0a0a14",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            borderBottom: isLast ? "none" : "1px solid #15151f",
+                          }}
+                        />
+                        <div
+                          style={{
+                            background: "#0e0e18",
+                            borderRadius: isLast ? "0 0 10px 0" : 0,
+                            padding: "14px 18px",
+                            borderBottom: isLast ? "none" : "1px solid #15151f",
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontSize: 10,
+                              color: "#555",
+                              letterSpacing: 1,
+                              marginBottom: 4,
+                            }}
+                          >
+                            {label}
                           </div>
-                          {fxSub && <div style={{ fontSize: 11, color: "#555", marginTop: 3 }}>{fxSub}</div>}
+                          <div
+                            style={{
+                              fontFamily: "'Bebas Neue', sans-serif",
+                              fontSize: 24,
+                              color: !gbBetter ? "#00d4ff" : "#aaa",
+                              lineHeight: 1,
+                            }}
+                          >
+                            {fxFmt}
+                            {!gbBetter && (
+                              <span style={{ fontSize: 12, color: "#00d4ff", marginLeft: 8 }}>
+                                ▲
+                              </span>
+                            )}
+                          </div>
+                          {fxSub && (
+                            <div style={{ fontSize: 11, color: "#555", marginTop: 3 }}>{fxSub}</div>
+                          )}
                         </div>
                       </div>
                     );
                   })}
 
                   {/* Verdict */}
-                  <div style={{ gridColumn: "1 / -1", background: gbWins && gbWithdrawMore ? "#00ff8710" : "#00d4ff10", border: `1px solid ${gbWins && gbWithdrawMore ? "#00ff8733" : "#00d4ff33"}`, borderTop: "none", borderRadius: "0 0 10px 10px", padding: "12px 18px", display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
-                    <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, color: gbWins && gbWithdrawMore ? "#00ff87" : "#00d4ff" }}>
+                  <div
+                    style={{
+                      gridColumn: "1 / -1",
+                      background: gbWins && gbWithdrawMore ? "#00ff8710" : "#00d4ff10",
+                      border: `1px solid ${gbWins && gbWithdrawMore ? "#00ff8733" : "#00d4ff33"}`,
+                      borderTop: "none",
+                      borderRadius: "0 0 10px 10px",
+                      padding: "12px 18px",
+                      display: "flex",
+                      gap: 16,
+                      alignItems: "center",
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontFamily: "'Bebas Neue', sans-serif",
+                        fontSize: 18,
+                        color: gbWins && gbWithdrawMore ? "#00ff87" : "#00d4ff",
+                      }}
+                    >
                       {gbWins && gbWithdrawMore
                         ? "GAIN-BASED WINS ON BOTH FRONTS"
                         : !gbWins && !gbWithdrawMore
@@ -969,9 +1125,15 @@ export default function GainBasedWithdrawal() {
                             : `FIXED ${fixedRate}% PRESERVES MORE · GAIN-BASED PAYS OUT MORE`}
                     </div>
                     <div style={{ fontSize: 11, color: "#555" }}>
-                      Balance diff: <span style={{ color: "#aaa" }}>{fmt(Math.abs(finalBalance - fixedFinalBalance))}</span>
+                      Balance diff:{" "}
+                      <span style={{ color: "#aaa" }}>
+                        {fmt(Math.abs(finalBalance - fixedFinalBalance))}
+                      </span>
                       {" · "}
-                      Withdrawal diff: <span style={{ color: "#aaa" }}>{fmt(Math.abs(totalWithdrawn - fixedTotalWithdrawn))}</span>
+                      Withdrawal diff:{" "}
+                      <span style={{ color: "#aaa" }}>
+                        {fmt(Math.abs(totalWithdrawn - fixedTotalWithdrawn))}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -1069,11 +1231,7 @@ export default function GainBasedWithdrawal() {
                 <tbody>
                   {simData.map((d) => {
                     const retColor =
-                      d.annualReturn < 0
-                        ? "#ff6b6b"
-                        : d.annualReturn > 20
-                          ? "#00ff87"
-                          : "#aaa";
+                      d.annualReturn < 0 ? "#ff6b6b" : d.annualReturn > 20 ? "#00ff87" : "#aaa";
                     const balColor =
                       d.portfolioAfter > costBasis
                         ? "#00ff87"
@@ -1096,9 +1254,7 @@ export default function GainBasedWithdrawal() {
                       exchangeRate && d.year > 0 ? (d.withdrawal / 12) * exchangeRate : null;
                     return (
                       <tr key={d.year}>
-                        <td style={{ color: "#888" }}>
-                          {d.year === 0 ? "Start" : d.calendarYear}
-                        </td>
+                        <td style={{ color: "#888" }}>{d.year === 0 ? "Start" : d.calendarYear}</td>
                         <td style={{ color: retColor, fontWeight: 500 }}>
                           {d.year === 0
                             ? "—"
