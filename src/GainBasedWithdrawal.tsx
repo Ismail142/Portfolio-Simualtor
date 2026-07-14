@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Area,
-  Bar,
   CartesianGrid,
   ComposedChart,
+  Line,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -965,9 +964,9 @@ export default function GainBasedWithdrawal() {
           <div className="section">
             <h2 className="section-title">WITHDRAWAL AMOUNT COMPARISON</h2>
             <p style={{ color: "#666", fontSize: 12, marginTop: -8, marginBottom: 14 }}>
-              <span style={{ color: "#00ff87" }}>▌</span> Gain-based withdrawal
+              <span style={{ color: "#00ff87" }}>——</span> Gain-based withdrawal
               {" · "}
-              <span style={{ color: "#00d4ff" }}>▌</span> Fixed {fixedRate}% withdrawal
+              <span style={{ color: "#00d4ff" }}>- - -</span> Fixed {fixedRate}% withdrawal
               {" · "}
               Red shade = down years
             </p>
@@ -1007,21 +1006,24 @@ export default function GainBasedWithdrawal() {
                         strokeWidth={24}
                       />
                     ))}
-                  <Bar
+                  <Line
+                    type="monotone"
                     dataKey="withdrawal"
                     name="Gain-Based Withdrawal"
-                    fill="#00ff87"
-                    fillOpacity={0.7}
-                    radius={[2, 2, 0, 0]}
-                    maxBarSize={14}
+                    stroke="#00ff87"
+                    strokeWidth={2.5}
+                    dot={false}
+                    activeDot={{ r: 4, fill: "#00ff87" }}
                   />
-                  <Bar
+                  <Line
+                    type="monotone"
                     dataKey="fixedWithdrawal"
                     name={`Fixed ${fixedRate}% Withdrawal`}
-                    fill="#00d4ff"
-                    fillOpacity={0.55}
-                    radius={[2, 2, 0, 0]}
-                    maxBarSize={14}
+                    stroke="#00d4ff"
+                    strokeWidth={2}
+                    strokeDasharray="6 3"
+                    dot={false}
+                    activeDot={{ r: 3, fill: "#00d4ff" }}
                   />
                 </ComposedChart>
               </ResponsiveContainer>
