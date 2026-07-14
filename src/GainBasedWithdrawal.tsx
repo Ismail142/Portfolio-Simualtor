@@ -384,6 +384,7 @@ export default function GainBasedWithdrawal() {
     balance: d.portfolioAfter,
     fixedBalance: fixedSimData[i]?.portfolioAfter ?? 0,
     withdrawal: d.withdrawal,
+    fixedWithdrawal: fixedSimData[i]?.withdrawal ?? 0,
     return: d.annualReturn,
   }));
 
@@ -962,13 +963,11 @@ export default function GainBasedWithdrawal() {
 
           {/* Chart */}
           <div className="section">
-            <h2 className="section-title">PORTFOLIO BALANCE OVER TIME</h2>
+            <h2 className="section-title">WITHDRAWAL AMOUNT COMPARISON</h2>
             <p style={{ color: "#666", fontSize: 12, marginTop: -8, marginBottom: 14 }}>
-              <span style={{ color: "#00ff87" }}>——</span> Gain-based balance
+              <span style={{ color: "#00ff87" }}>▌</span> Gain-based withdrawal
               {" · "}
-              <span style={{ color: "#00d4ff" }}>- - -</span> Fixed {fixedRate}% balance
-              {" · "}
-              <span style={{ color: "#ffbe0b" }}>▌</span> Gain-based withdrawal (right axis)
+              <span style={{ color: "#00d4ff" }}>▌</span> Fixed {fixedRate}% withdrawal
               {" · "}
               Red shade = down years
             </p>
@@ -978,12 +977,6 @@ export default function GainBasedWithdrawal() {
                   data={chartData}
                   margin={{ top: 10, right: 20, bottom: 20, left: 0 }}
                 >
-                  <defs>
-                    <linearGradient id="gbGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#00ff87" stopOpacity={0.18} />
-                      <stop offset="95%" stopColor="#00ff87" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
                   <CartesianGrid stroke="#1a1a28" strokeDasharray="3 3" />
                   <XAxis
                     dataKey="calendarYear"
@@ -998,14 +991,6 @@ export default function GainBasedWithdrawal() {
                     }}
                   />
                   <YAxis
-                    yAxisId="bal"
-                    stroke="#555"
-                    tick={{ fill: "#666", fontSize: 11 }}
-                    tickFormatter={(v) => fmt(Number(v))}
-                  />
-                  <YAxis
-                    yAxisId="wd"
-                    orientation="right"
                     stroke="#555"
                     tick={{ fill: "#666", fontSize: 11 }}
                     tickFormatter={(v) => fmt(Number(v))}
@@ -1016,44 +1001,27 @@ export default function GainBasedWithdrawal() {
                     .map((d) => (
                       <ReferenceLine
                         key={`neg-${d.calendarYear}`}
-                        yAxisId="bal"
                         x={d.calendarYear}
                         stroke="#ff6b6b"
                         strokeOpacity={0.12}
                         strokeWidth={24}
                       />
                     ))}
-                  <Area
-                    yAxisId="bal"
-                    type="monotone"
-                    dataKey="fixedBalance"
-                    name={`Fixed ${fixedRate}% Balance`}
-                    stroke="#00d4ff"
-                    strokeWidth={2}
-                    strokeDasharray="6 3"
-                    fill="none"
-                    dot={false}
-                    activeDot={{ r: 3, fill: "#00d4ff" }}
-                  />
-                  <Area
-                    yAxisId="bal"
-                    type="monotone"
-                    dataKey="balance"
-                    name="Gain-Based Balance"
-                    stroke="#00ff87"
-                    strokeWidth={2.5}
-                    fill="url(#gbGrad)"
-                    dot={false}
-                    activeDot={{ r: 4, fill: "#00ff87" }}
-                  />
                   <Bar
-                    yAxisId="wd"
                     dataKey="withdrawal"
                     name="Gain-Based Withdrawal"
-                    fill="#ffbe0b"
+                    fill="#00ff87"
+                    fillOpacity={0.7}
+                    radius={[2, 2, 0, 0]}
+                    maxBarSize={14}
+                  />
+                  <Bar
+                    dataKey="fixedWithdrawal"
+                    name={`Fixed ${fixedRate}% Withdrawal`}
+                    fill="#00d4ff"
                     fillOpacity={0.55}
                     radius={[2, 2, 0, 0]}
-                    maxBarSize={16}
+                    maxBarSize={14}
                   />
                 </ComposedChart>
               </ResponsiveContainer>
