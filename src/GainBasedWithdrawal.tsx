@@ -190,11 +190,20 @@ function GBTooltip({
     >
       <div style={{ color: "#888", marginBottom: 6 }}>{label}</div>
       {payload.map((p, i) => {
-        const ghs = fmtGHS(p.value, exchangeRate);
+        const monthly = p.value / 12;
+        const monthlyGHS = exchangeRate ? monthly * exchangeRate : null;
         return (
-          <div key={i} style={{ color: p.color, lineHeight: 1.9 }}>
-            {p.name}: {fmt(p.value)}
-            {ghs ? <span style={{ color: "#666", fontSize: 10 }}> · {ghs}</span> : null}
+          <div key={i} style={{ color: p.color, lineHeight: 2 }}>
+            <div>{p.name}</div>
+            <div style={{ paddingLeft: 8 }}>
+              <span style={{ color: "#ccc" }}>{fmt(p.value)}/yr</span>
+              <span style={{ color: "#888", fontSize: 11 }}> · {fmt(monthly)}/mo</span>
+            </div>
+            {monthlyGHS ? (
+              <div style={{ paddingLeft: 8, color: "#888", fontSize: 11 }}>
+                ≈ GHS {monthlyGHS.toLocaleString("en-GH", { maximumFractionDigits: 0 })}/mo
+              </div>
+            ) : null}
           </div>
         );
       })}
