@@ -202,7 +202,16 @@ export default function GainBasedWithdrawal() {
   const [startYear, setStartYear] = useState(2000);
   const [duration, setDuration] = useState<number | null>(30);
   const [calculated, setCalculated] = useState(false);
-  const [fixedRate, setFixedRate] = useState(6);
+  const [fixedRate, setFixedRate] = useState<number>(() => {
+    try {
+      const raw = window.localStorage.getItem(GB_STORAGE_KEY);
+      if (!raw) return 6;
+      const s = JSON.parse(raw) as { fixedRate?: number };
+      return [4, 5, 6, 7, 8].includes(Number(s.fixedRate)) ? Number(s.fixedRate) : 6;
+    } catch {
+      return 6;
+    }
+  });
 
   const endYear = duration === null ? MAX_YEAR : Math.min(startYear + duration - 1, MAX_YEAR);
   const years = endYear - startYear + 1;
