@@ -350,26 +350,18 @@ export default function App() {
         .topbar { position: sticky; top: 0; z-index: 50; background: #07071099; backdrop-filter: blur(12px); border-bottom: 1px solid #1a1a28; }
         .topbar-inner { max-width: 1200px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 52px; gap: 16px; }
         .topbar-brand { font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 3px; color: #fff; white-space: nowrap; }
-        .nav-pills { display: flex; gap: 2px; background: #0e0e18; border: 1px solid #1a1a28; border-radius: 8px; padding: 3px; }
-        .nav-pill { background: transparent; border: none; color: #666; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 1.5px; padding: 6px 16px; border-radius: 6px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
-        .nav-pill.active { background: #00ff8718; color: #00ff87; }
-        .nav-pill:hover:not(.active) { color: #aaa; background: #ffffff08; }
-        .hamburger { display: none; flex-direction: column; justify-content: center; gap: 5px; background: transparent; border: none; cursor: pointer; padding: 6px; }
+        .nav-pills { display: none; }
+        .hamburger { display: flex; flex-direction: column; justify-content: center; gap: 5px; background: transparent; border: none; cursor: pointer; padding: 6px; }
         .hamburger span { display: block; width: 22px; height: 2px; background: #aaa; border-radius: 2px; transition: all 0.2s; }
         .hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
         .hamburger.open span:nth-child(2) { opacity: 0; }
         .hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
-        .mobile-menu { display: none; }
-        @media (max-width: 600px) {
-          .nav-pills { display: none; }
-          .hamburger { display: flex; }
-          .mobile-menu { display: block; position: absolute; top: 52px; left: 0; right: 0; background: #0e0e18; border-bottom: 1px solid #1a1a28; z-index: 49; }
-          .mobile-menu-item { display: block; width: 100%; background: transparent; border: none; border-bottom: 1px solid #1a1a28; color: #666; font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 2px; padding: 16px 24px; text-align: left; cursor: pointer; transition: all 0.15s; }
-          .mobile-menu-item:last-child { border-bottom: none; }
-          .mobile-menu-item.active { color: #00ff87; background: #00ff8710; }
-          .mobile-menu-item:hover:not(.active) { color: #aaa; background: #ffffff08; }
-          .mobile-menu-item .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: currentColor; margin-right: 12px; opacity: 0.6; }
-        }
+        .mobile-menu { display: block; position: absolute; top: 52px; left: 0; right: 0; background: #0e0e18; border-bottom: 1px solid #1a1a28; z-index: 49; }
+        .mobile-menu-item { display: block; width: 100%; background: transparent; border: none; border-bottom: 1px solid #1a1a28; color: #666; font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 2px; padding: 16px 24px; text-align: left; cursor: pointer; transition: all 0.15s; }
+        .mobile-menu-item:last-child { border-bottom: none; }
+        .mobile-menu-item.active { color: #00ff87; background: #00ff8710; }
+        .mobile-menu-item:hover:not(.active) { color: #aaa; background: #ffffff08; }
+        .mobile-menu-item .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: currentColor; margin-right: 12px; opacity: 0.6; }
       `}</style>
 
       <div className="topbar" style={{ position: "sticky", top: 0, zIndex: 50 }}>
