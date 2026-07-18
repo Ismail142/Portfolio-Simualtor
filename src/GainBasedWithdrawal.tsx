@@ -33,6 +33,13 @@ function getWithdrawalRate(gainPct: number): number {
   return 4;
 }
 
+function getCagr3WithdrawalRate(cagr3Pct: number): number {
+  if (cagr3Pct >= 12) return 7;
+  if (cagr3Pct >= 8) return 6;
+  if (cagr3Pct >= 3) return 5;
+  return 4;
+}
+
 const RATE_COLORS: Record<number, string> = {
   8: "#00ff87",
   7: "#00d4ff",
@@ -75,6 +82,51 @@ type FixedSimYear = {
   portfolioAfter: number;
   withdrawal: number;
 };
+
+type Cagr3SimYear = {
+  year: number;
+  calendarYear: number;
+  portfolioAfter: number;
+  withdrawal: number;
+  withdrawalRate: number;
+  cagr3: number;
+};
+
+function simulateCagr3(
+  costBasis: number,
+  startYear: number,
+  endYear: number,
+): Cagr3SimYear[] {
+  let portfolio = costBasis;
+  // track portfolio values at end of each year for trailing CAGR calc
+  const portfolioHistory: number[] = [portfolio];
+  const result: Cagr3SimYear[] = [
+    { year: 0, calendarYear: startYear, portfolioAfter: portfolio, withdrawal: 0, withdrawalRate: 0, cagr3: 0 },
+  ];
+  const totalYears = endYear - startYear + 1;
+  for (let y = 1; y <= totalYears; y++) {
+    const calendarYear = startYear + y - 1;
+    const annualReturn = getHistoricalReturn(calendarYear);
+    // trailing CAGR: use up to 3 years of history before this year's withdrawal
+    const lookback = Math.min(3, portfolioHistory.length);
+    const pastPortfolio = portfolioHistory[portfolioHistory.length - lookback];
+    const cagr3 = (Math.pow(portfolio / pastPortfolio, 1 / lookback) - 1) * 100;
+    const withdrawalRate = getCagr3WithdrawalRate(cagr3);
+    const withdrawal = portfolio * (withdrawalRate / 100);
+    const afterWithdrawal = portfolio - withdrawal;
+    portfolio = afterWithdrawal * (1 + annualReturn / 100);
+    portfolioHistory.push(Math.round(portfolio));
+    result.push({
+      year: y,
+      calendarYear,
+      portfolioAfter: Math.round(portfolio),
+      withdrawal: Math.round(withdrawal),
+      withdrawalRate,
+      cagr3,
+    });
+  }
+  return result;
+}
 
 function simulateFixed(
   costBasis: number,
@@ -338,6 +390,11 @@ export default function GainBasedWithdrawal() {
     [costBasis, fixedRate, startYear, endYear],
   );
 
+  const cagr3SimData = useMemo(
+    () => simulateCagr3(costBasis, startYear, endYear),
+    [costBasis, startYear, endYear],
+  );
+
   const lastRow = simData[simData.length - 1];
   const finalBalance = lastRow.portfolioAfter;
   const grew = finalBalance > costBasis;
@@ -351,6 +408,13 @@ export default function GainBasedWithdrawal() {
   const fixedTotalWithdrawn = fixedSimData.slice(1).reduce((s, d) => s + d.withdrawal, 0);
   const fixedAvgMonthlyWithdrawal =
     fixedSimData.slice(1).reduce((s, d) => s + d.withdrawal, 0) / Math.max(1, years) / 12;
+
+  const cagr3LastRow = cagr3SimData[cagr3SimData.length - 1];
+  const cagr3FinalBalance = cagr3LastRow.portfolioAfter;
+  const cagr3TotalWithdrawn = cagr3SimData.slice(1).reduce((s, d) => s + d.withdrawal, 0);
+  const cagr3AvgMonthlyWithdrawal = cagr3TotalWithdrawn / Math.max(1, years) / 12;
+  const cagr3Cagr =
+    years > 0 && costBasis > 0 ? (Math.pow(cagr3FinalBalance / costBasis, 1 / years) - 1) * 100 : 0;
 
   const cagr =
     years > 0 && costBasis > 0 ? (Math.pow(finalBalance / costBasis, 1 / years) - 1) * 100 : 0;
@@ -393,6 +457,7 @@ export default function GainBasedWithdrawal() {
     fixedBalance: fixedSimData[i]?.portfolioAfter ?? 0,
     withdrawal: d.withdrawal,
     fixedWithdrawal: fixedSimData[i]?.withdrawal ?? 0,
+    cagr3Withdrawal: cagr3SimData[i]?.withdrawal ?? 0,
     return: d.annualReturn,
   }));
 
@@ -893,212 +958,135 @@ export default function GainBasedWithdrawal() {
               ))}
             </div>
 
-            {/* Side-by-side metric rows */}
+            {/* Three-way metric grid */}
             {(() => {
-              const gbWins = finalBalance > fixedFinalBalance;
-              const gbWithdrawMore = totalWithdrawn > fixedTotalWithdrawn;
+              const rows = [
+                {
+                  label: "FINAL BALANCE",
+                  gb: finalBalance,
+                  fx: fixedFinalBalance,
+                  c3: cagr3FinalBalance,
+                  gbFmt: fmt(finalBalance),
+                  fxFmt: fmt(fixedFinalBalance),
+                  c3Fmt: fmt(cagr3FinalBalance),
+                  gbSub: exchangeRate ? (fmtGHS(finalBalance, exchangeRate) ?? "") : "",
+                  fxSub: exchangeRate ? (fmtGHS(fixedFinalBalance, exchangeRate) ?? "") : "",
+                  c3Sub: exchangeRate ? (fmtGHS(cagr3FinalBalance, exchangeRate) ?? "") : "",
+                },
+                {
+                  label: "TOTAL WITHDRAWN",
+                  gb: totalWithdrawn,
+                  fx: fixedTotalWithdrawn,
+                  c3: cagr3TotalWithdrawn,
+                  gbFmt: fmt(totalWithdrawn),
+                  fxFmt: fmt(fixedTotalWithdrawn),
+                  c3Fmt: fmt(cagr3TotalWithdrawn),
+                  gbSub: exchangeRate ? (fmtGHS(totalWithdrawn, exchangeRate) ?? "") : "",
+                  fxSub: exchangeRate ? (fmtGHS(fixedTotalWithdrawn, exchangeRate) ?? "") : "",
+                  c3Sub: exchangeRate ? (fmtGHS(cagr3TotalWithdrawn, exchangeRate) ?? "") : "",
+                },
+                {
+                  label: "AVG MONTHLY INCOME",
+                  gb: avgMonthlyWithdrawal,
+                  fx: fixedAvgMonthlyWithdrawal,
+                  c3: cagr3AvgMonthlyWithdrawal,
+                  gbFmt: fmt(avgMonthlyWithdrawal) + "/mo",
+                  fxFmt: fmt(fixedAvgMonthlyWithdrawal) + "/mo",
+                  c3Fmt: fmt(cagr3AvgMonthlyWithdrawal) + "/mo",
+                  gbSub: exchangeRate ? (fmtGHS(avgMonthlyWithdrawal, exchangeRate) ?? "") + "/mo" : "",
+                  fxSub: exchangeRate ? (fmtGHS(fixedAvgMonthlyWithdrawal, exchangeRate) ?? "") + "/mo" : "",
+                  c3Sub: exchangeRate ? (fmtGHS(cagr3AvgMonthlyWithdrawal, exchangeRate) ?? "") + "/mo" : "",
+                },
+                {
+                  label: "PORTFOLIO CAGR",
+                  gb: cagr,
+                  fx: fixedCagr,
+                  c3: cagr3Cagr,
+                  gbFmt: `${cagr >= 0 ? "+" : ""}${cagr.toFixed(2)}%`,
+                  fxFmt: `${fixedCagr >= 0 ? "+" : ""}${fixedCagr.toFixed(2)}%`,
+                  c3Fmt: `${cagr3Cagr >= 0 ? "+" : ""}${cagr3Cagr.toFixed(2)}%`,
+                  gbSub: "",
+                  fxSub: "",
+                  c3Sub: "",
+                },
+              ];
+
+              const sep = (isLast: boolean) => ({
+                background: "#0a0a14",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "0 8px",
+                borderBottom: isLast ? "none" : "1px solid #15151f",
+                fontSize: 9,
+                color: "#333",
+              });
+
               return (
                 <div
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "1fr auto 1fr",
+                    gridTemplateColumns: "1fr auto 1fr auto 1fr",
                     gap: 0,
                     alignItems: "stretch",
                   }}
                 >
-                  {/* Header row */}
-                  <div
-                    style={{
-                      background: "#0e0e18",
-                      borderRadius: "10px 0 0 0",
-                      padding: "12px 18px",
-                      borderBottom: "1px solid #15151f",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: 11,
-                        color: "#00ff87",
-                        letterSpacing: 1.5,
-                        fontWeight: 700,
-                      }}
-                    >
-                      GAIN-BASED (4–7%)
-                    </div>
-                    <div style={{ fontSize: 10, color: "#555", marginTop: 2 }}>
-                      Adapts to portfolio performance
-                    </div>
+                  {/* Header */}
+                  <div style={{ background: "#0e0e18", borderRadius: "10px 0 0 0", padding: "12px 18px", borderBottom: "1px solid #15151f" }}>
+                    <div style={{ fontSize: 11, color: "#00ff87", letterSpacing: 1.5, fontWeight: 700 }}>GAIN-BASED (4–7%)</div>
+                    <div style={{ fontSize: 10, color: "#555", marginTop: 2 }}>Adapts to portfolio gains</div>
                   </div>
-                  <div
-                    style={{
-                      background: "#0a0a14",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      padding: "0 12px",
-                      borderBottom: "1px solid #15151f",
-                      fontSize: 10,
-                      color: "#333",
-                    }}
-                  >
-                    VS
+                  <div style={{ ...sep(false) }}>VS</div>
+                  <div style={{ background: "#0e0e18", padding: "12px 18px", borderBottom: "1px solid #15151f" }}>
+                    <div style={{ fontSize: 11, color: "#00d4ff", letterSpacing: 1.5, fontWeight: 700 }}>FIXED {fixedRate}% ANNUAL</div>
+                    <div style={{ fontSize: 10, color: "#555", marginTop: 2 }}>Constant rate every year</div>
                   </div>
-                  <div
-                    style={{
-                      background: "#0e0e18",
-                      borderRadius: "0 10px 0 0",
-                      padding: "12px 18px",
-                      borderBottom: "1px solid #15151f",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: 11,
-                        color: "#00d4ff",
-                        letterSpacing: 1.5,
-                        fontWeight: 700,
-                      }}
-                    >
-                      FIXED {fixedRate}% ANNUAL
-                    </div>
-                    <div style={{ fontSize: 10, color: "#555", marginTop: 2 }}>
-                      Constant rate every year
-                    </div>
+                  <div style={{ ...sep(false) }}>VS</div>
+                  <div style={{ background: "#0e0e18", borderRadius: "0 10px 0 0", padding: "12px 18px", borderBottom: "1px solid #15151f" }}>
+                    <div style={{ fontSize: 11, color: "#ffbe0b", letterSpacing: 1.5, fontWeight: 700 }}>3-YR CAGR RULE</div>
+                    <div style={{ fontSize: 10, color: "#555", marginTop: 2 }}>Trailing 3-yr CAGR → rate</div>
                   </div>
 
-                  {/* Final balance */}
-                  {[
-                    {
-                      label: "FINAL BALANCE",
-                      gbVal: finalBalance,
-                      fxVal: fixedFinalBalance,
-                      gbFmt: fmt(finalBalance),
-                      fxFmt: fmt(fixedFinalBalance),
-                      gbSub: exchangeRate ? (fmtGHS(finalBalance, exchangeRate) ?? "") : "",
-                      fxSub: exchangeRate ? (fmtGHS(fixedFinalBalance, exchangeRate) ?? "") : "",
-                      gbBetter: finalBalance >= fixedFinalBalance,
-                    },
-                    {
-                      label: "TOTAL WITHDRAWN",
-                      gbVal: totalWithdrawn,
-                      fxVal: fixedTotalWithdrawn,
-                      gbFmt: fmt(totalWithdrawn),
-                      fxFmt: fmt(fixedTotalWithdrawn),
-                      gbSub: exchangeRate ? (fmtGHS(totalWithdrawn, exchangeRate) ?? "") : "",
-                      fxSub: exchangeRate ? (fmtGHS(fixedTotalWithdrawn, exchangeRate) ?? "") : "",
-                      gbBetter: totalWithdrawn >= fixedTotalWithdrawn,
-                    },
-                    {
-                      label: "AVG MONTHLY INCOME",
-                      gbVal: avgMonthlyWithdrawal,
-                      fxVal: fixedAvgMonthlyWithdrawal,
-                      gbFmt: fmt(avgMonthlyWithdrawal) + "/mo",
-                      fxFmt: fmt(fixedAvgMonthlyWithdrawal) + "/mo",
-                      gbSub: exchangeRate
-                        ? (fmtGHS(avgMonthlyWithdrawal, exchangeRate) ?? "") + "/mo"
-                        : "",
-                      fxSub: exchangeRate
-                        ? (fmtGHS(fixedAvgMonthlyWithdrawal, exchangeRate) ?? "") + "/mo"
-                        : "",
-                      gbBetter: avgMonthlyWithdrawal >= fixedAvgMonthlyWithdrawal,
-                    },
-                    {
-                      label: "CAGR",
-                      gbVal: cagr,
-                      fxVal: fixedCagr,
-                      gbFmt: `${cagr >= 0 ? "+" : ""}${cagr.toFixed(2)}%`,
-                      fxFmt: `${fixedCagr >= 0 ? "+" : ""}${fixedCagr.toFixed(2)}%`,
-                      gbSub: "",
-                      fxSub: "",
-                      gbBetter: cagr >= fixedCagr,
-                    },
-                  ].map(({ label, gbFmt, fxFmt, gbSub, fxSub, gbBetter }, i) => {
-                    const isLast = i === 3;
+                  {rows.map(({ label, gb, fx, c3, gbFmt, fxFmt, c3Fmt, gbSub, fxSub, c3Sub }, i) => {
+                    const isLast = i === rows.length - 1;
+                    const best = Math.max(gb, fx, c3);
+                    const gbWin = gb === best;
+                    const fxWin = fx === best;
+                    const c3Win = c3 === best;
+                    const cell = (
+                      val: number,
+                      valFmt: string,
+                      sub: string,
+                      win: boolean,
+                      color: string,
+                      radiusTL = 0,
+                      radiusTR = 0,
+                      radiusBL = 0,
+                      radiusBR = 0,
+                    ) => (
+                      <div
+                        style={{
+                          background: "#0e0e18",
+                          borderRadius: `${radiusTL}px ${radiusTR}px ${radiusBR}px ${radiusBL}px`,
+                          padding: "14px 18px",
+                          borderBottom: isLast ? "none" : "1px solid #15151f",
+                        }}
+                      >
+                        <div style={{ fontSize: 10, color: "#555", letterSpacing: 1, marginBottom: 4 }}>{label}</div>
+                        <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 22, color: win ? color : "#aaa", lineHeight: 1 }}>
+                          {valFmt}
+                          {win && <span style={{ fontSize: 12, color, marginLeft: 6 }}>▲</span>}
+                        </div>
+                        {sub && <div style={{ fontSize: 11, color: "#555", marginTop: 3 }}>{sub}</div>}
+                      </div>
+                    );
                     return (
                       <div key={label} style={{ display: "contents" }}>
-                        <div
-                          style={{
-                            background: "#0e0e18",
-                            borderRadius: isLast ? "0 0 0 10px" : 0,
-                            padding: "14px 18px",
-                            borderBottom: isLast ? "none" : "1px solid #15151f",
-                          }}
-                        >
-                          <div
-                            style={{
-                              fontSize: 10,
-                              color: "#555",
-                              letterSpacing: 1,
-                              marginBottom: 4,
-                            }}
-                          >
-                            {label}
-                          </div>
-                          <div
-                            style={{
-                              fontFamily: "'Bebas Neue', sans-serif",
-                              fontSize: 24,
-                              color: gbBetter ? "#00ff87" : "#aaa",
-                              lineHeight: 1,
-                            }}
-                          >
-                            {gbFmt}
-                            {gbBetter && (
-                              <span style={{ fontSize: 12, color: "#00ff87", marginLeft: 8 }}>
-                                ▲
-                              </span>
-                            )}
-                          </div>
-                          {gbSub && (
-                            <div style={{ fontSize: 11, color: "#555", marginTop: 3 }}>{gbSub}</div>
-                          )}
-                        </div>
-                        <div
-                          style={{
-                            background: "#0a0a14",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            borderBottom: isLast ? "none" : "1px solid #15151f",
-                          }}
-                        />
-                        <div
-                          style={{
-                            background: "#0e0e18",
-                            borderRadius: isLast ? "0 0 10px 0" : 0,
-                            padding: "14px 18px",
-                            borderBottom: isLast ? "none" : "1px solid #15151f",
-                          }}
-                        >
-                          <div
-                            style={{
-                              fontSize: 10,
-                              color: "#555",
-                              letterSpacing: 1,
-                              marginBottom: 4,
-                            }}
-                          >
-                            {label}
-                          </div>
-                          <div
-                            style={{
-                              fontFamily: "'Bebas Neue', sans-serif",
-                              fontSize: 24,
-                              color: !gbBetter ? "#00d4ff" : "#aaa",
-                              lineHeight: 1,
-                            }}
-                          >
-                            {fxFmt}
-                            {!gbBetter && (
-                              <span style={{ fontSize: 12, color: "#00d4ff", marginLeft: 8 }}>
-                                ▲
-                              </span>
-                            )}
-                          </div>
-                          {fxSub && (
-                            <div style={{ fontSize: 11, color: "#555", marginTop: 3 }}>{fxSub}</div>
-                          )}
-                        </div>
+                        {cell(gb, gbFmt, gbSub, gbWin, "#00ff87", isLast ? 0 : 0, 0, isLast ? 10 : 0)}
+                        <div style={{ ...sep(isLast) }} />
+                        {cell(fx, fxFmt, fxSub, fxWin, "#00d4ff")}
+                        <div style={{ ...sep(isLast) }} />
+                        {cell(c3, c3Fmt, c3Sub, c3Win, "#ffbe0b", 0, 0, 0, isLast ? 10 : 0)}
                       </div>
                     );
                   })}
@@ -1107,8 +1095,8 @@ export default function GainBasedWithdrawal() {
                   <div
                     style={{
                       gridColumn: "1 / -1",
-                      background: gbWins && gbWithdrawMore ? "#00ff8710" : "#00d4ff10",
-                      border: `1px solid ${gbWins && gbWithdrawMore ? "#00ff8733" : "#00d4ff33"}`,
+                      background: "#ffffff08",
+                      border: "1px solid #1a1a28",
                       borderTop: "none",
                       borderRadius: "0 0 10px 10px",
                       padding: "12px 18px",
@@ -1118,32 +1106,30 @@ export default function GainBasedWithdrawal() {
                       flexWrap: "wrap",
                     }}
                   >
-                    <div
-                      style={{
-                        fontFamily: "'Bebas Neue', sans-serif",
-                        fontSize: 18,
-                        color: gbWins && gbWithdrawMore ? "#00ff87" : "#00d4ff",
-                      }}
-                    >
-                      {gbWins && gbWithdrawMore
-                        ? "GAIN-BASED WINS ON BOTH FRONTS"
-                        : !gbWins && !gbWithdrawMore
-                          ? `FIXED ${fixedRate}% WINS ON BOTH FRONTS`
-                          : gbWins
-                            ? `GAIN-BASED PRESERVES MORE · FIXED ${fixedRate}% PAYS OUT MORE`
-                            : `FIXED ${fixedRate}% PRESERVES MORE · GAIN-BASED PAYS OUT MORE`}
-                    </div>
-                    <div style={{ fontSize: 11, color: "#555" }}>
-                      Balance diff:{" "}
-                      <span style={{ color: "#aaa" }}>
-                        {fmt(Math.abs(finalBalance - fixedFinalBalance))}
-                      </span>
-                      {" · "}
-                      Withdrawal diff:{" "}
-                      <span style={{ color: "#aaa" }}>
-                        {fmt(Math.abs(totalWithdrawn - fixedTotalWithdrawn))}
-                      </span>
-                    </div>
+                    {(() => {
+                      const bestBalance = Math.max(finalBalance, fixedFinalBalance, cagr3FinalBalance);
+                      const bestIncome = Math.max(totalWithdrawn, fixedTotalWithdrawn, cagr3TotalWithdrawn);
+                      const winner =
+                        finalBalance === bestBalance && totalWithdrawn === bestIncome
+                          ? { label: "GAIN-BASED", color: "#00ff87" }
+                          : fixedFinalBalance === bestBalance && fixedTotalWithdrawn === bestIncome
+                            ? { label: `FIXED ${fixedRate}%`, color: "#00d4ff" }
+                            : cagr3FinalBalance === bestBalance && cagr3TotalWithdrawn === bestIncome
+                              ? { label: "3-YR CAGR RULE", color: "#ffbe0b" }
+                              : null;
+                      return (
+                        <>
+                          <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 16, color: winner?.color ?? "#aaa" }}>
+                            {winner ? `${winner.label} WINS ON BOTH FRONTS` : "SPLIT RESULT — NO SINGLE WINNER"}
+                          </div>
+                          <div style={{ fontSize: 11, color: "#555" }}>
+                            3-Yr CAGR rule:{" "}
+                            <span style={{ color: "#ffbe0b" }}>{fmt(cagr3FinalBalance)}</span> balance ·{" "}
+                            <span style={{ color: "#ffbe0b" }}>{fmt(cagr3TotalWithdrawn)}</span> withdrawn
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
               );
@@ -1157,6 +1143,8 @@ export default function GainBasedWithdrawal() {
               <span style={{ color: "#00ff87" }}>——</span> Gain-based withdrawal
               {" · "}
               <span style={{ color: "#00d4ff" }}>- - -</span> Fixed {fixedRate}% withdrawal
+              {" · "}
+              <span style={{ color: "#ffbe0b" }}>····</span> 3-Yr CAGR-based withdrawal
               {" · "}
               Red shade = down years
             </p>
@@ -1214,6 +1202,16 @@ export default function GainBasedWithdrawal() {
                     strokeDasharray="6 3"
                     dot={false}
                     activeDot={{ r: 3, fill: "#00d4ff" }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="cagr3Withdrawal"
+                    name="3-Yr CAGR Withdrawal"
+                    stroke="#ffbe0b"
+                    strokeWidth={2}
+                    strokeDasharray="2 3"
+                    dot={false}
+                    activeDot={{ r: 3, fill: "#ffbe0b" }}
                   />
                 </ComposedChart>
               </ResponsiveContainer>
