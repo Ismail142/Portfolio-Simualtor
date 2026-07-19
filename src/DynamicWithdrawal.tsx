@@ -601,7 +601,7 @@ export default function DynamicWithdrawal() {
                       )}
                     </div>
 
-                    <div style={{ marginBottom: 10 }}>
+                    <div style={{ marginBottom: 8 }}>
                       <div style={{ fontSize: 10, color: "#555", letterSpacing: 1.5 }}>TOTAL WITHDRAWN</div>
                       <div style={{ fontSize: 17, fontFamily: "'Bebas Neue', sans-serif", color: "#aaa" }}>
                         {fmt(totalWithdrawn)}
@@ -610,6 +610,22 @@ export default function DynamicWithdrawal() {
                         <div style={{ fontSize: 11, color: "#888" }}>{fmtGHS(totalWithdrawn, exchangeRate)}</div>
                       )}
                     </div>
+
+                    {(() => {
+                      const cagr = years > 0 && portfolio > 0
+                        ? (Math.pow(finalBalance / portfolio, 1 / years) - 1) * 100
+                        : 0;
+                      const cagrColor = cagr >= 0 ? "#00ff87" : "#ff6b6b";
+                      return (
+                        <div style={{ marginBottom: 10 }}>
+                          <div style={{ fontSize: 10, color: "#555", letterSpacing: 1.5 }}>PORTFOLIO CAGR</div>
+                          <div style={{ fontSize: 17, fontFamily: "'Bebas Neue', sans-serif", color: cagrColor }}>
+                            {cagr >= 0 ? "+" : ""}{cagr.toFixed(2)}%
+                          </div>
+                          <div style={{ fontSize: 11, color: "#555" }}>per year over {years} yrs</div>
+                        </div>
+                      );
+                    })()}
 
                     <div
                       style={{
