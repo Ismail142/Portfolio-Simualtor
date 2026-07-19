@@ -436,10 +436,16 @@ export default function DynamicWithdrawal() {
       </div>
 
       {calculated && (() => {
-        const winnerRate = allSims.reduce<{ rate: number; bal: number }>((best, s) => {
+        const winnerBalance = allSims.reduce<{ rate: number; bal: number }>((best, s) => {
           const bal = s.data[s.data.length - 1].portfolioAfter;
           return bal > best.bal ? { rate: s.rate, bal } : best;
         }, { rate: RATES[0], bal: allSims[0].data[allSims[0].data.length - 1].portfolioAfter }).rate;
+
+        const winnerWithdrawal = allSims.reduce<{ rate: number; avg: number }>((best, s) => {
+          const rows = s.data.slice(1);
+          const avg = rows.length > 0 ? rows.reduce((sum, d) => sum + d.withdrawal, 0) / rows.length / 12 : 0;
+          return avg > best.avg ? { rate: s.rate, avg } : best;
+        }, { rate: RATES[0], avg: 0 }).rate;
 
         return (
         <>
@@ -465,7 +471,9 @@ export default function DynamicWithdrawal() {
                 const totalWithdrawn = rows.reduce((s, d) => s + d.withdrawal, 0);
                 const avgMonthly = rows.length > 0 ? totalWithdrawn / rows.length / 12 : 0;
                 const color = RATE_COLORS[rate];
-                const isWinner = rate === winnerRate;
+                const isBestBalance = rate === winnerBalance;
+                const isBestWithdrawal = rate === winnerWithdrawal;
+                const isAnyWinner = isBestBalance || isBestWithdrawal;
                 const survivalColor =
                   finalBalance >= portfolio
                     ? "#00ff87"
@@ -487,29 +495,49 @@ export default function DynamicWithdrawal() {
                   <div
                     key={rate}
                     style={{
-                      background: isWinner ? "#0d1a12" : "#0e0e18",
-                      border: isWinner ? `2px solid ${color}` : `2px solid ${color}44`,
+                      background: isAnyWinner ? "#0d1a12" : "#0e0e18",
+                      border: isAnyWinner ? `2px solid ${color}` : `2px solid ${color}44`,
                       borderRadius: 12,
                       padding: "18px 20px",
+                      paddingTop: isBestBalance && isBestWithdrawal ? 30 : isAnyWinner ? 28 : 18,
                       position: "relative",
                     }}
                   >
-                    {isWinner && (
+                    {isBestBalance && (
                       <div
                         style={{
                           position: "absolute",
-                          top: -10,
-                          right: 14,
-                          background: color,
+                          top: -1,
+                          left: isBestWithdrawal ? 14 : "auto",
+                          right: isBestWithdrawal ? "auto" : 14,
+                          background: "#00ff87",
                           color: "#050510",
                           fontFamily: "'Bebas Neue', sans-serif",
-                          fontSize: 11,
-                          letterSpacing: 2,
-                          padding: "2px 10px",
-                          borderRadius: 4,
+                          fontSize: 10,
+                          letterSpacing: 1.5,
+                          padding: "3px 10px",
+                          borderRadius: "0 0 6px 6px",
                         }}
                       >
-                        👑 WINNER
+                        👑 BEST BALANCE
+                      </div>
+                    )}
+                    {isBestWithdrawal && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: -1,
+                          right: 14,
+                          background: "#ffbe0b",
+                          color: "#050510",
+                          fontFamily: "'Bebas Neue', sans-serif",
+                          fontSize: 10,
+                          letterSpacing: 1.5,
+                          padding: "3px 10px",
+                          borderRadius: "0 0 6px 6px",
+                        }}
+                      >
+                        💰 BEST INCOME
                       </div>
                     )}
 
