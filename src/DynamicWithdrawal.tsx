@@ -277,6 +277,17 @@ export default function DynamicWithdrawal() {
     });
   }, [allSims]);
 
+  const withdrawalChartData = useMemo(() => {
+    const base = allSims[0].data.slice(1);
+    return base.map((row, i) => {
+      const point: Record<string, number> = { calendarYear: row.calendarYear };
+      allSims.forEach(({ rate, data }) => {
+        point[`wd${rate}`] = Math.round((data[i + 1]?.withdrawal ?? 0) / 12);
+      });
+      return point;
+    });
+  }, [allSims]);
+
   const negYears = useMemo(
     () => allSims[0].data.filter((d) => d.annualReturn < 0).map((d) => d.calendarYear),
     [allSims],
@@ -683,6 +694,97 @@ export default function DynamicWithdrawal() {
                       key={r}
                       type="monotone"
                       dataKey={`rate${r}`}
+                      name={`${r}%`}
+                      stroke={RATE_COLORS[r]}
+                      strokeWidth={2}
+                      dot={false}
+                      activeDot={{ r: 4 }}
+                    />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Withdrawal chart */}
+          <div className="section">
+            <h2 className="section-title">MONTHLY WITHDRAWAL BY RATE</h2>
+            <p style={{ color: "#666", fontSize: 12, marginTop: -8, marginBottom: 14 }}>
+              Monthly withdrawal amount over time for each rate · higher rate = more income but faster portfolio draw-down
+            </p>
+            <div style={{ width: "100%", height: 340 }}>
+              <ResponsiveContainer>
+                <LineChart
+                  data={withdrawalChartData}
+                  margin={{ top: 10, right: 20, bottom: 20, left: 0 }}
+                >
+                  <CartesianGrid stroke="#1a1a28" strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="calendarYear"
+                    stroke="#555"
+                    tick={{ fill: "#666", fontSize: 11 }}
+                    label={{ value: "Year", position: "insideBottom", offset: -10, fill: "#555", fontSize: 11 }}
+                  />
+                  <YAxis
+                    stroke="#555"
+                    tick={{ fill: "#666", fontSize: 11 }}
+                    tickFormatter={(v) =>
+                      exchangeRate
+                        ? `₵${Math.round(Number(v) * exchangeRate).toLocaleString()}`
+                        : fmt(Number(v))
+                    }
+                  />
+                  <Tooltip
+                    content={({ active, payload, label }) => {
+                      if (!active || !payload?.length) return null;
+                      return (
+                        <div
+                          style={{
+                            background: "#0a0a12",
+                            border: "1px solid #1a1a28",
+                            borderRadius: 8,
+                            padding: "10px 14px",
+                            fontFamily: "'DM Mono', monospace",
+                            fontSize: 12,
+                            minWidth: 190,
+                          }}
+                        >
+                          <div style={{ color: "#888", marginBottom: 8, fontSize: 11, letterSpacing: 1 }}>{label}</div>
+                          {payload.map((p, i) => {
+                            const usd = Number(p.value ?? 0);
+                            const ghs = exchangeRate ? usd * exchangeRate : null;
+                            return (
+                              <div key={i} style={{ color: p.color, lineHeight: 1.6, marginBottom: 4 }}>
+                                <span style={{ fontWeight: 600 }}>{p.name}</span>{" "}
+                                {fmt(usd)}/mo
+                                {ghs !== null && (
+                                  <span style={{ color: "#888", fontSize: 10 }}> · ₵{Math.round(ghs).toLocaleString()}/mo</span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    }}
+                  />
+                  <Legend
+                    wrapperStyle={{ fontSize: 12, fontFamily: "'DM Mono', monospace", color: "#888", paddingTop: 8 }}
+                    formatter={(value) => value}
+                  />
+                  {negYears.map((cy) => (
+                    <ReferenceLine
+                      key={`wdneg-${cy}`}
+                      x={cy}
+                      stroke="#ff6b6b"
+                      strokeOpacity={0.1}
+                      strokeWidth={20}
+                    />
+                  ))}
+                  {RATES.map((r) => (
+                    <Line
+                      key={r}
+                      type="monotone"
+                      dataKey={`wd${r}`}
                       name={`${r}%`}
                       stroke={RATE_COLORS[r]}
                       strokeWidth={2}
