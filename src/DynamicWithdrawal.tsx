@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Area,
-  Bar,
+  AreaChart,
   CartesianGrid,
-  ComposedChart,
+  Legend,
+  Line,
+  LineChart,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -14,7 +16,6 @@ import { RETURNS } from "./data/historicalReturns";
 
 const DW_STORAGE_KEY = "dynamic-withdrawal-inputs";
 
-// S&P 500 historical annual total returns 1926–currentYear
 const HISTORICAL_RETURNS = RETURNS;
 
 const DATA_YEARS = Object.keys(HISTORICAL_RETURNS)
@@ -22,6 +23,15 @@ const DATA_YEARS = Object.keys(HISTORICAL_RETURNS)
   .sort((a, b) => a - b);
 const MIN_YEAR = DATA_YEARS[0];
 const MAX_YEAR = DATA_YEARS[DATA_YEARS.length - 1];
+
+const RATES = [4, 5, 6, 7, 8] as const;
+const RATE_COLORS: Record<number, string> = {
+  4: "#00ff87",
+  5: "#00d4ff",
+  6: "#ffbe0b",
+  7: "#ff6b6b",
+  8: "#8338ec",
+};
 
 function getHistoricalReturn(calendarYear: number): number {
   if (HISTORICAL_RETURNS[calendarYear] !== undefined) return HISTORICAL_RETURNS[calendarYear];
@@ -52,16 +62,8 @@ type SimYear = {
   withdrawal: number;
   portfolioAfter: number;
   annualReturn: number;
-  cycled: boolean;
 };
 
-/**
- * Each year:
- *  1. Withdraw withdrawalRate% of the opening portfolio value (beginning-of-year)
- *  2. Apply historical market return to the remaining balance
- *  3. Result carries forward to next year
- * Simulation runs from startYear to endYear (capped at MAX_YEAR, no cycling).
- */
 function simulate(
   initialPortfolio: number,
   withdrawalRate: number,
@@ -79,19 +81,15 @@ function simulate(
     withdrawal: 0,
     portfolioAfter: portfolio,
     annualReturn: 0,
-    cycled: false,
   });
 
   for (let y = 1; y <= retirementYears; y++) {
     const calendarYear = startYear + y - 1;
     const annualReturn = getHistoricalReturn(calendarYear);
-
-    // Beginning-of-year withdrawal, then growth on remainder
     const portfolioBefore = portfolio;
     const withdrawal = portfolioBefore * (withdrawalRate / 100);
     const afterWithdrawal = portfolioBefore - withdrawal;
     portfolio = afterWithdrawal * (1 + annualReturn / 100);
-
     result.push({
       year: y,
       calendarYear,
@@ -99,25 +97,26 @@ function simulate(
       withdrawal: Math.round(withdrawal),
       portfolioAfter: Math.round(portfolio),
       annualReturn,
-      cycled: false,
     });
   }
-
   return result;
 }
 
-const DWTooltip = ({
+const MultiTooltip = ({
   active,
   payload,
   label,
   exchangeRate,
+  allSims,
 }: {
   active?: boolean;
   payload?: { name?: string; value?: number; color?: string }[];
   label?: number | string;
   exchangeRate: number | null;
+  allSims: { rate: number; data: SimYear[] }[];
 }) => {
   if (!active || !payload?.length) return null;
+  const calYear = Number(label);
   return (
     <div
       style={{
@@ -127,16 +126,28 @@ const DWTooltip = ({
         padding: "10px 14px",
         fontFamily: "'DM Mono', monospace",
         fontSize: 12,
+        minWidth: 200,
       }}
     >
-      <div style={{ color: "#888", marginBottom: 6, fontSize: 11, letterSpacing: 1 }}>{label}</div>
+      <div style={{ color: "#888", marginBottom: 8, fontSize: 11, letterSpacing: 1 }}>{label}</div>
       {payload.map((p, i) => {
-        const v = Number(p.value ?? 0);
-        const ghs = fmtGHS(v, exchangeRate);
+        const rateNum = Number(String(p.name).replace("%", ""));
+        const sim = allSims.find((s) => s.rate === rateNum);
+        const row = sim?.data.find((d) => d.calendarYear === calYear);
+        const monthlyUSD = row && row.year > 0 ? row.withdrawal / 12 : null;
+        const monthlyGHS = monthlyUSD && exchangeRate ? monthlyUSD * exchangeRate : null;
+        const bal = Number(p.value ?? 0);
         return (
-          <div key={i} style={{ color: p.color, lineHeight: 1.9 }}>
-            {p.name}: {fmt(v)}
-            {ghs ? <span style={{ color: "#666", fontSize: 10 }}> · {ghs}</span> : null}
+          <div key={i} style={{ color: p.color, lineHeight: 1.6, marginBottom: 6 }}>
+            <div style={{ fontWeight: 600 }}>{p.name} · {fmt(bal)}</div>
+            {monthlyUSD !== null && (
+              <div style={{ fontSize: 11, color: "#aaa" }}>
+                Monthly: {fmt(monthlyUSD)}
+                {monthlyGHS !== null && (
+                  <span style={{ color: "#666" }}> · ₵{Math.round(monthlyGHS).toLocaleString()}/mo</span>
+                )}
+              </div>
+            )}
           </div>
         );
       })}
@@ -148,24 +159,21 @@ export default function DynamicWithdrawal() {
   const [draftPortfolio, setDraftPortfolio] = useState<number | "">(500000);
   const [draftPortfolioGHS, setDraftPortfolioGHS] = useState<number | "">("");
   const [draftExchangeRate, setDraftExchangeRate] = useState<number | "">(15);
-  const [draftRate, setDraftRate] = useState<number | "">(4);
   const [draftStartYear, setDraftStartYear] = useState<number>(2000);
   const [draftDuration, setDraftDuration] = useState<number | "">(30);
   const lastEdited = useRef<"usd" | "ghs">("usd");
 
   const [portfolio, setPortfolio] = useState(500000);
   const [exchangeRate, setExchangeRate] = useState<number | null>(null);
-  const [rate, setRate] = useState(4);
   const [startYear, setStartYear] = useState(2000);
   const [duration, setDuration] = useState<number | null>(30);
   const [calculated, setCalculated] = useState(false);
 
-  // Effective end year: empty duration → MAX_YEAR, otherwise capped at MAX_YEAR
   const endYear = duration === null ? MAX_YEAR : Math.min(startYear + duration - 1, MAX_YEAR);
   const years = endYear - startYear + 1;
   const draftEndYear =
     draftDuration === "" ? MAX_YEAR : Math.min(draftStartYear + draftDuration - 1, MAX_YEAR);
-  const isCapped = draftDuration !== "" && draftStartYear + draftDuration - 1 > MAX_YEAR;
+  const isCapped = draftDuration !== "" && draftStartYear + Number(draftDuration) - 1 > MAX_YEAR;
 
   useEffect(() => {
     try {
@@ -174,40 +182,33 @@ export default function DynamicWithdrawal() {
       const s = JSON.parse(raw) as {
         portfolio?: number;
         exchangeRate?: number;
-        rate?: number;
         startYear?: number;
         duration?: number;
         portfolioGHS?: number;
       };
       const p = Math.max(1, Number(s.portfolio) || 500000);
       const er = s.exchangeRate && s.exchangeRate > 0 ? s.exchangeRate : null;
-      const r = Math.max(0.1, Number(s.rate) || 4);
       const sy = Math.max(MIN_YEAR, Math.min(MAX_YEAR, Math.floor(Number(s.startYear) || 2000)));
       const dur = s.duration != null ? Math.max(1, Math.floor(Number(s.duration))) : null;
       const ghs = s.portfolioGHS && s.portfolioGHS > 0 ? s.portfolioGHS : er ? p * er : "";
       setDraftPortfolio(p);
-      setDraftRate(r);
       setDraftStartYear(sy);
       setDraftDuration(dur ?? "");
       if (er) setDraftExchangeRate(er);
       if (ghs) setDraftPortfolioGHS(ghs);
       setPortfolio(p);
       setExchangeRate(er);
-      setRate(r);
       setStartYear(sy);
       setDuration(dur);
       setCalculated(true);
-    } catch {
-      /* ignore */
-    }
+    } catch { /* ignore */ }
   }, []);
 
   const handleUSDChange = (val: string) => {
     const n = val === "" ? "" : +val;
     setDraftPortfolio(n);
     lastEdited.current = "usd";
-    const er =
-      typeof draftExchangeRate === "number" && draftExchangeRate > 0 ? draftExchangeRate : null;
+    const er = typeof draftExchangeRate === "number" && draftExchangeRate > 0 ? draftExchangeRate : null;
     setDraftPortfolioGHS(typeof n === "number" && er ? n * er : "");
   };
 
@@ -215,8 +216,7 @@ export default function DynamicWithdrawal() {
     const n = val === "" ? "" : +val;
     setDraftPortfolioGHS(n);
     lastEdited.current = "ghs";
-    const er =
-      typeof draftExchangeRate === "number" && draftExchangeRate > 0 ? draftExchangeRate : null;
+    const er = typeof draftExchangeRate === "number" && draftExchangeRate > 0 ? draftExchangeRate : null;
     setDraftPortfolio(typeof n === "number" && er ? n / er : "");
   };
 
@@ -231,113 +231,69 @@ export default function DynamicWithdrawal() {
     }
   };
 
-  const committedDuration = duration;
-  const draftDurationVal = draftDuration === "" ? null : draftDuration;
+  const draftDurationVal = draftDuration === "" ? null : Number(draftDuration);
   const isDirty =
     Number(draftPortfolio) !== portfolio ||
     (Number(draftExchangeRate) || null) !== exchangeRate ||
-    Number(draftRate) !== rate ||
     draftStartYear !== startYear ||
-    draftDurationVal !== committedDuration;
+    draftDurationVal !== duration;
 
   const handleCalculate = () => {
     const p = Math.max(1, Math.floor(Number(draftPortfolio) || 1));
-    const er =
-      typeof draftExchangeRate === "number" && draftExchangeRate > 0 ? draftExchangeRate : null;
-    const r = Math.max(0.1, Number(draftRate) || 4);
+    const er = typeof draftExchangeRate === "number" && draftExchangeRate > 0 ? draftExchangeRate : null;
     const sy = draftStartYear;
     const dur = draftDuration === "" ? null : Math.max(1, Math.floor(Number(draftDuration)));
     const ghsVal =
       typeof draftPortfolioGHS === "number" && draftPortfolioGHS > 0
         ? draftPortfolioGHS
-        : er
-          ? p * er
-          : null;
+        : er ? p * er : null;
     setDraftPortfolio(p);
-    setDraftRate(r);
     setDraftDuration(dur ?? "");
     if (er) setDraftExchangeRate(er);
     if (ghsVal) setDraftPortfolioGHS(ghsVal);
     setPortfolio(p);
     setExchangeRate(er);
-    setRate(r);
     setStartYear(sy);
     setDuration(dur);
     setCalculated(true);
     try {
-      window.localStorage.setItem(
-        DW_STORAGE_KEY,
-        JSON.stringify({
-          portfolio: p,
-          exchangeRate: er,
-          rate: r,
-          startYear: sy,
-          duration: dur ?? null,
-          portfolioGHS: ghsVal,
-        }),
-      );
-    } catch {
-      /* ignore */
-    }
+      window.localStorage.setItem(DW_STORAGE_KEY, JSON.stringify({
+        portfolio: p, exchangeRate: er, startYear: sy, duration: dur ?? null, portfolioGHS: ghsVal,
+      }));
+    } catch { /* ignore */ }
   };
 
-  const simData = useMemo(
-    () => simulate(portfolio, rate, startYear, endYear),
-    [portfolio, rate, startYear, endYear],
+  const allSims = useMemo(
+    () => RATES.map((r) => ({ rate: r, data: simulate(portfolio, r, startYear, endYear) })),
+    [portfolio, startYear, endYear],
   );
 
-  const lastRow = simData[simData.length - 1];
-  const finalBalance = lastRow.portfolioAfter;
-  const grew = finalBalance > portfolio;
-  const withdrawalRows = simData.slice(1);
-  const totalWithdrawn = withdrawalRows.reduce((s, d) => s + d.withdrawal, 0);
-  const avgWithdrawal = withdrawalRows.length > 0 ? totalWithdrawn / withdrawalRows.length : 0;
-  const minWithdrawal = Math.min(...withdrawalRows.map((d) => d.withdrawal));
-  const maxWithdrawal = Math.max(...withdrawalRows.map((d) => d.withdrawal));
-  const initWithdrawal = portfolio * (rate / 100);
+  const chartData = useMemo(() => {
+    const base = allSims[0].data;
+    return base.map((row, i) => {
+      const point: Record<string, number> = { calendarYear: row.calendarYear };
+      allSims.forEach(({ rate, data }) => {
+        point[`rate${rate}`] = data[i]?.portfolioAfter ?? 0;
+      });
+      return point;
+    });
+  }, [allSims]);
 
-  // CAGR: portfolio start-to-end compound annual growth rate
-  const cagr =
-    years > 0 && portfolio > 0 ? (Math.pow(finalBalance / portfolio, 1 / years) - 1) * 100 : 0;
-  // Average monthly withdrawal
-  const avgMonthlyWithdrawal = avgWithdrawal / 12;
+  const withdrawalChartData = useMemo(() => {
+    const base = allSims[0].data.slice(1);
+    return base.map((row, i) => {
+      const point: Record<string, number> = { calendarYear: row.calendarYear };
+      allSims.forEach(({ rate, data }) => {
+        point[`wd${rate}`] = Math.round((data[i + 1]?.withdrawal ?? 0) / 12);
+      });
+      return point;
+    });
+  }, [allSims]);
 
-  const retainedPct = (finalBalance / portfolio) * 100;
-  const survivalStatus: "strong" | "survived" | "atrisk" | "depleted" =
-    finalBalance >= portfolio
-      ? "strong"
-      : retainedPct >= 50
-        ? "survived"
-        : retainedPct >= 10
-          ? "atrisk"
-          : "depleted";
-  const survivalLabel =
-    survivalStatus === "strong"
-      ? "THRIVING"
-      : survivalStatus === "survived"
-        ? "SURVIVED"
-        : survivalStatus === "atrisk"
-          ? "AT RISK"
-          : "DEPLETED";
-  const survivalColor =
-    survivalStatus === "strong"
-      ? "#00ff87"
-      : survivalStatus === "survived"
-        ? "#00d4ff"
-        : survivalStatus === "atrisk"
-          ? "#ffbe0b"
-          : "#ff6b6b";
-  const survivalSub =
-    survivalStatus === "strong"
-      ? `Portfolio grew ${retainedPct.toFixed(0)}% of start`
-      : `${retainedPct.toFixed(1)}% of starting value remains`;
-
-  const chartData = simData.map((d) => ({
-    calendarYear: d.calendarYear,
-    balance: d.portfolioAfter,
-    withdrawal: d.withdrawal,
-    return: d.annualReturn,
-  }));
+  const negYears = useMemo(
+    () => allSims[0].data.filter((d) => d.annualReturn < 0).map((d) => d.calendarYear),
+    [allSims],
+  );
 
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto" }}>
@@ -370,9 +326,7 @@ export default function DynamicWithdrawal() {
             <span className="slider-val">
               {typeof draftPortfolioGHS === "number" && draftPortfolioGHS > 0
                 ? (fmtGHS(draftPortfolioGHS, 1) ?? "—")
-                : typeof draftPortfolio === "number" &&
-                    typeof draftExchangeRate === "number" &&
-                    draftExchangeRate > 0
+                : typeof draftPortfolio === "number" && typeof draftExchangeRate === "number" && draftExchangeRate > 0
                   ? (fmtGHS(draftPortfolio * draftExchangeRate, 1) ?? "—")
                   : "—"}
             </span>
@@ -412,22 +366,6 @@ export default function DynamicWithdrawal() {
 
         <div className="stat-card slider-wrap">
           <div className="slider-label">
-            <span>Annual Withdrawal Rate (%)</span>
-            <span className="slider-val">{Number(draftRate) || 0}%</span>
-          </div>
-          <input
-            className="num-input"
-            type="number"
-            min={0.1}
-            max={50}
-            step={0.1}
-            value={draftRate}
-            onChange={(e) => setDraftRate(e.target.value === "" ? "" : +e.target.value)}
-          />
-        </div>
-
-        <div className="stat-card slider-wrap">
-          <div className="slider-label">
             <span>Start Year</span>
             <span className="slider-val">{draftStartYear}</span>
           </div>
@@ -449,8 +387,7 @@ export default function DynamicWithdrawal() {
           >
             {DATA_YEARS.map((y) => (
               <option key={y} value={y} style={{ background: "#07070d" }}>
-                {y} ({HISTORICAL_RETURNS[y] >= 0 ? "+" : ""}
-                {HISTORICAL_RETURNS[y].toFixed(1)}%)
+                {y} ({HISTORICAL_RETURNS[y] >= 0 ? "+" : ""}{HISTORICAL_RETURNS[y].toFixed(1)}%)
               </option>
             ))}
           </select>
@@ -485,7 +422,7 @@ export default function DynamicWithdrawal() {
             {draftDuration === ""
               ? `NO LIMIT · RUNS TO ${MAX_YEAR}`
               : isCapped
-                ? `END YEAR CAPPED AT ${MAX_YEAR} (DATA LIMIT) · EFFECTIVE ${draftEndYear - draftStartYear + 1} YRS`
+                ? `END YEAR CAPPED AT ${MAX_YEAR} · EFFECTIVE ${draftEndYear - draftStartYear + 1} YRS`
                 : `END YEAR: ${draftEndYear}`}
           </div>
         </div>
@@ -503,7 +440,6 @@ export default function DynamicWithdrawal() {
         </button>
       </div>
 
-      {/* Strategy note */}
       <div
         style={{
           background: "#0a0a14",
@@ -518,354 +454,395 @@ export default function DynamicWithdrawal() {
       >
         <span style={{ color: "#888", letterSpacing: 1 }}>STRATEGY · </span>
         Each year the portfolio grows (or falls) by the historical S&amp;P 500 return, then you
-        withdraw <span style={{ color: "#00ff87" }}>{rate}%</span> of whatever it is worth at that
-        point. Simulation runs {MIN_YEAR}–{MAX_YEAR} using real S&P 500 returns.
+        withdraw a fixed percentage of whatever it is worth at that point. All five rates{" "}
+        <span style={{ color: "#00ff87" }}>4%</span>,{" "}
+        <span style={{ color: "#00d4ff" }}>5%</span>,{" "}
+        <span style={{ color: "#ffbe0b" }}>6%</span>,{" "}
+        <span style={{ color: "#ff6b6b" }}>7%</span>,{" "}
+        <span style={{ color: "#8338ec" }}>8%</span>{" "}
+        are simulated simultaneously using real S&P 500 returns {MIN_YEAR}–{MAX_YEAR}.
       </div>
 
-      {calculated && (
+      {calculated && (() => {
+        const winnerBalance = allSims.reduce<{ rate: number; bal: number }>((best, s) => {
+          const bal = s.data[s.data.length - 1].portfolioAfter;
+          return bal > best.bal ? { rate: s.rate, bal } : best;
+        }, { rate: RATES[0], bal: allSims[0].data[allSims[0].data.length - 1].portfolioAfter }).rate;
+
+        const winnerWithdrawal = allSims.reduce<{ rate: number; avg: number }>((best, s) => {
+          const rows = s.data.slice(1);
+          const avg = rows.length > 0 ? rows.reduce((sum, d) => sum + d.withdrawal, 0) / rows.length / 12 : 0;
+          return avg > best.avg ? { rate: s.rate, avg } : best;
+        }, { rate: RATES[0], avg: 0 }).rate;
+
+        return (
         <>
-          {/* Summary */}
+          {/* Rate comparison cards */}
           <div className="section">
             <h2 className="section-title">
-              RESULTS · START {startYear} → {endYear} · {years} YEARS · {rate}% DYNAMIC WITHDRAWAL
+              RATE COMPARISON · START {startYear} → {endYear} · {years} YEARS
             </h2>
 
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
+                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
                 gap: 12,
               }}
             >
-              {/* Survival card */}
-              <div
-                style={{
-                  background: "#0e0e18",
-                  border: `2px solid ${survivalColor}44`,
-                  borderRadius: 12,
-                  padding: "18px 20px",
-                  gridColumn: "span 1",
-                }}
-              >
-                <div style={{ fontSize: 11, color: "#666", letterSpacing: 1.5, marginBottom: 6 }}>
-                  SURVIVAL STATUS
-                </div>
-                <div
-                  style={{
-                    fontFamily: "'Bebas Neue', sans-serif",
-                    fontSize: 36,
-                    color: survivalColor,
-                    lineHeight: 1,
-                  }}
-                >
-                  {survivalLabel}
-                </div>
-                <div style={{ fontSize: 11, color: "#555", marginTop: 8 }}>{survivalSub}</div>
-                <div
-                  style={{
-                    marginTop: 10,
-                    height: 4,
-                    background: "#1a1a28",
-                    borderRadius: 2,
-                    overflow: "hidden",
-                  }}
-                >
-                  <div
-                    style={{
-                      height: "100%",
-                      width: `${Math.min(100, retainedPct)}%`,
-                      background: survivalColor,
-                      borderRadius: 2,
-                      transition: "width 0.4s",
-                    }}
-                  />
-                </div>
-              </div>
+              {allSims.map(({ rate, data }) => {
+                const last = data[data.length - 1];
+                const finalBalance = last.portfolioAfter;
+                const grew = finalBalance > portfolio;
+                const retainedPct = (finalBalance / portfolio) * 100;
+                const rows = data.slice(1);
+                const totalWithdrawn = rows.reduce((s, d) => s + d.withdrawal, 0);
+                const avgMonthly = rows.length > 0 ? totalWithdrawn / rows.length / 12 : 0;
+                const color = RATE_COLORS[rate];
+                const isBestBalance = rate === winnerBalance;
+                const isBestWithdrawal = rate === winnerWithdrawal;
+                const isAnyWinner = isBestBalance || isBestWithdrawal;
+                const survivalColor =
+                  finalBalance >= portfolio
+                    ? "#00ff87"
+                    : retainedPct >= 50
+                      ? "#00d4ff"
+                      : retainedPct >= 10
+                        ? "#ffbe0b"
+                        : "#ff6b6b";
+                const survivalLabel =
+                  finalBalance >= portfolio
+                    ? "THRIVING"
+                    : retainedPct >= 50
+                      ? "SURVIVED"
+                      : retainedPct >= 10
+                        ? "AT RISK"
+                        : "DEPLETED";
 
-              <div
-                style={{
-                  background: "#0e0e18",
-                  border: `1px solid ${grew ? "#00ff8733" : "#ffbe0b33"}`,
-                  borderRadius: 12,
-                  padding: "18px 20px",
-                }}
-              >
-                <div style={{ fontSize: 11, color: "#666", letterSpacing: 1.5, marginBottom: 6 }}>
-                  FINAL BALANCE
-                </div>
-                <div
-                  style={{
-                    fontFamily: "'Bebas Neue', sans-serif",
-                    fontSize: 32,
-                    color: grew ? "#00ff87" : "#ffbe0b",
-                    lineHeight: 1,
-                  }}
-                >
-                  {fmt(finalBalance)}
-                </div>
-                {exchangeRate && (
-                  <div style={{ fontSize: 12, color: "#888", marginTop: 4 }}>
-                    {fmtGHS(finalBalance, exchangeRate)}
-                  </div>
-                )}
-                <div style={{ fontSize: 11, color: "#555", marginTop: 6 }}>
-                  {grew
-                    ? `▲ ${fmt(finalBalance - portfolio)} above start`
-                    : `▼ ${fmt(portfolio - finalBalance)} below start`}
-                </div>
-              </div>
-              {/* TOTAL PORTFOLIO PERFORMANCE */}
-              <div
-                style={{
-                  background: "#0e0e18",
-                  border: "1px solid #00ff8733",
-                  borderRadius: 12,
-                  padding: "18px 20px",
-                }}
-              >
-                {(() => {
-                  const perfPct = ((finalBalance - portfolio) / portfolio) * 100;
-                  const isPos = perfPct >= 0;
-                  return (
-                    <>
-                      <div
-                        style={{ fontSize: 11, color: "#666", letterSpacing: 1.5, marginBottom: 6 }}
-                      >
-                        PORTFOLIO PERFORMANCE
-                      </div>
+                return (
+                  <div
+                    key={rate}
+                    style={{
+                      background: isAnyWinner ? "#0d1a12" : "#0e0e18",
+                      border: isAnyWinner ? `2px solid ${color}` : `2px solid ${color}44`,
+                      borderRadius: 12,
+                      padding: "18px 20px",
+                      paddingTop: isBestBalance && isBestWithdrawal ? 30 : isAnyWinner ? 28 : 18,
+                      position: "relative",
+                    }}
+                  >
+                    {isBestBalance && (
                       <div
                         style={{
+                          position: "absolute",
+                          top: -1,
+                          left: isBestWithdrawal ? 14 : "auto",
+                          right: isBestWithdrawal ? "auto" : 14,
+                          background: "#00ff87",
+                          color: "#050510",
                           fontFamily: "'Bebas Neue', sans-serif",
-                          fontSize: 28,
-                          color: isPos ? "#00ff87" : "#ff6b6b",
-                          lineHeight: 1,
+                          fontSize: 10,
+                          letterSpacing: 1.5,
+                          padding: "3px 10px",
+                          borderRadius: "0 0 6px 6px",
                         }}
                       >
-                        {isPos ? "+" : ""}
-                        {perfPct.toFixed(1)}%
+                        👑 BEST BALANCE
                       </div>
-                      <div style={{ fontSize: 12, color: "#aaa", marginTop: 6 }}>
-                        {fmt(portfolio)} → {fmt(finalBalance)}
+                    )}
+                    {isBestWithdrawal && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: -1,
+                          right: 14,
+                          background: "#ffbe0b",
+                          color: "#050510",
+                          fontFamily: "'Bebas Neue', sans-serif",
+                          fontSize: 10,
+                          letterSpacing: 1.5,
+                          padding: "3px 10px",
+                          borderRadius: "0 0 6px 6px",
+                        }}
+                      >
+                        💰 BEST INCOME
+                      </div>
+                    )}
+
+                    <div
+                      style={{
+                        fontFamily: "'Bebas Neue', sans-serif",
+                        fontSize: 28,
+                        color,
+                        lineHeight: 1,
+                        marginBottom: 10,
+                      }}
+                    >
+                      {rate}% WITHDRAWAL
+                    </div>
+
+                    <div style={{ marginBottom: 8 }}>
+                      <div style={{ fontSize: 10, color: "#555", letterSpacing: 1.5 }}>FINAL BALANCE</div>
+                      <div style={{ fontSize: 20, fontFamily: "'Bebas Neue', sans-serif", color: grew ? "#00ff87" : "#ff6b6b" }}>
+                        {fmt(finalBalance)}
                       </div>
                       {exchangeRate && (
-                        <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>
-                          {fmtGHS(portfolio, exchangeRate)} → {fmtGHS(finalBalance, exchangeRate)}
+                        <div style={{ fontSize: 11, color: "#888" }}>{fmtGHS(finalBalance, exchangeRate)}</div>
+                      )}
+                    </div>
+
+                    <div style={{ marginBottom: 8 }}>
+                      <div style={{ fontSize: 10, color: "#555", letterSpacing: 1.5 }}>AVG MONTHLY WITHDRAWAL</div>
+                      <div style={{ fontSize: 17, fontFamily: "'Bebas Neue', sans-serif", color: "#aaa" }}>
+                        {fmt(avgMonthly)}<span style={{ fontSize: 11, color: "#666" }}>/mo</span>
+                      </div>
+                      {exchangeRate && (
+                        <div style={{ fontSize: 12, color: "#888" }}>
+                          {fmtGHS(avgMonthly, exchangeRate)}/mo
                         </div>
                       )}
-                      <div style={{ fontSize: 11, color: "#555", marginTop: 4 }}>
-                        Initial value vs final balance
+                    </div>
+
+                    <div style={{ marginBottom: 8 }}>
+                      <div style={{ fontSize: 10, color: "#555", letterSpacing: 1.5 }}>TOTAL WITHDRAWN</div>
+                      <div style={{ fontSize: 17, fontFamily: "'Bebas Neue', sans-serif", color: "#aaa" }}>
+                        {fmt(totalWithdrawn)}
                       </div>
-                    </>
-                  );
-                })()}
-              </div>
+                      {exchangeRate && (
+                        <div style={{ fontSize: 11, color: "#888" }}>{fmtGHS(totalWithdrawn, exchangeRate)}</div>
+                      )}
+                    </div>
 
-              {/* CAGR card */}
-              <div
-                style={{
-                  background: "#0e0e18",
-                  border: "1px solid #00ff8733",
-                  borderRadius: 12,
-                  padding: "18px 20px",
-                }}
-              >
-                <div style={{ fontSize: 11, color: "#666", letterSpacing: 1.5, marginBottom: 6 }}>
-                  PORTFOLIO CAGR
-                </div>
-                <div
-                  style={{
-                    fontFamily: "'Bebas Neue', sans-serif",
-                    fontSize: 32,
-                    color: cagr >= 0 ? "#00ff87" : "#ff6b6b",
-                    lineHeight: 1,
-                  }}
-                >
-                  {cagr >= 0 ? "+" : ""}
-                  {cagr.toFixed(2)}%
-                </div>
-                <div style={{ fontSize: 11, color: "#555", marginTop: 6 }}>
-                  Compound annual growth
-                </div>
-              </div>
+                    {(() => {
+                      const cagr = years > 0 && portfolio > 0
+                        ? (Math.pow(finalBalance / portfolio, 1 / years) - 1) * 100
+                        : 0;
+                      const cagrColor = cagr >= 0 ? "#00ff87" : "#ff6b6b";
+                      return (
+                        <div style={{ marginBottom: 10 }}>
+                          <div style={{ fontSize: 10, color: "#555", letterSpacing: 1.5 }}>PORTFOLIO CAGR</div>
+                          <div style={{ fontSize: 17, fontFamily: "'Bebas Neue', sans-serif", color: cagrColor }}>
+                            {cagr >= 0 ? "+" : ""}{cagr.toFixed(2)}%
+                          </div>
+                          <div style={{ fontSize: 11, color: "#555" }}>per year over {years} yrs</div>
+                        </div>
+                      );
+                    })()}
 
-              {/* Avg monthly withdrawal card */}
-              <div
-                style={{
-                  background: "#0e0e18",
-                  border: "1px solid #8338ec33",
-                  borderRadius: 12,
-                  padding: "18px 20px",
-                }}
-              >
-                <div style={{ fontSize: 11, color: "#666", letterSpacing: 1.5, marginBottom: 6 }}>
-                  AVG MONTHLY WITHDRAWAL
-                </div>
-                <div
-                  style={{
-                    fontFamily: "'Bebas Neue', sans-serif",
-                    fontSize: 32,
-                    color: "#8338ec",
-                    lineHeight: 1,
-                  }}
-                >
-                  {fmt(avgMonthlyWithdrawal)}
-                </div>
-                {exchangeRate && (
-                  <div style={{ fontSize: 12, color: "#888", marginTop: 4 }}>
-                    {fmtGHS(avgMonthlyWithdrawal, exchangeRate)}/mo
+                    <div
+                      style={{
+                        fontSize: 11,
+                        fontFamily: "'Bebas Neue', sans-serif",
+                        color: survivalColor,
+                        letterSpacing: 1.5,
+                        borderTop: "1px solid #1a1a28",
+                        paddingTop: 8,
+                      }}
+                    >
+                      {survivalLabel}
+                      <div
+                        style={{
+                          marginTop: 6,
+                          height: 3,
+                          background: "#1a1a28",
+                          borderRadius: 2,
+                          overflow: "hidden",
+                        }}
+                      >
+                        <div
+                          style={{
+                            height: "100%",
+                            width: `${Math.min(100, Math.max(0, retainedPct))}%`,
+                            background: survivalColor,
+                            borderRadius: 2,
+                            transition: "width 0.4s",
+                          }}
+                        />
+                      </div>
+                      <div style={{ fontSize: 10, color: "#666", marginTop: 4 }}>
+                        {retainedPct.toFixed(1)}% of start retained
+                      </div>
+                    </div>
                   </div>
-                )}
-                <div style={{ fontSize: 11, color: "#555", marginTop: 6 }}>Avg annual ÷ 12</div>
-              </div>
-
-              <div
-                style={{
-                  background: "#0e0e18",
-                  border: "1px solid #00d4ff33",
-                  borderRadius: 12,
-                  padding: "18px 20px",
-                }}
-              >
-                <div style={{ fontSize: 11, color: "#666", letterSpacing: 1.5, marginBottom: 6 }}>
-                  AVG ANNUAL WITHDRAWAL
-                </div>
-                <div
-                  style={{
-                    fontFamily: "'Bebas Neue', sans-serif",
-                    fontSize: 28,
-                    color: "#00d4ff",
-                    lineHeight: 1,
-                  }}
-                >
-                  {fmt(avgWithdrawal)}
-                </div>
-                {exchangeRate && (
-                  <div style={{ fontSize: 12, color: "#888", marginTop: 4 }}>
-                    {fmtGHS(avgWithdrawal, exchangeRate)}/yr
-                  </div>
-                )}
-                <div style={{ fontSize: 11, color: "#555", marginTop: 6 }}>Over {years} years</div>
-              </div>
-
-              <div
-                style={{
-                  background: "#0e0e18",
-                  border: "1px solid #ffbe0b33",
-                  borderRadius: 12,
-                  padding: "18px 20px",
-                }}
-              >
-                <div style={{ fontSize: 11, color: "#666", letterSpacing: 1.5, marginBottom: 6 }}>
-                  TOTAL WITHDRAWN
-                </div>
-                <div
-                  style={{
-                    fontFamily: "'Bebas Neue', sans-serif",
-                    fontSize: 28,
-                    color: "#ffbe0b",
-                    lineHeight: 1,
-                  }}
-                >
-                  {fmt(totalWithdrawn)}
-                </div>
-                {exchangeRate && (
-                  <div style={{ fontSize: 12, color: "#888", marginTop: 4 }}>
-                    {fmtGHS(totalWithdrawn, exchangeRate)}
-                  </div>
-                )}
-                <div style={{ fontSize: 11, color: "#555", marginTop: 6 }}>
-                  From {fmt(portfolio)} portfolio
-                </div>
-              </div>
+                );
+              })}
             </div>
           </div>
 
-          {/* Chart */}
+          {/* Multi-line chart */}
           <div className="section">
-            <h2 className="section-title">PORTFOLIO BALANCE & ANNUAL WITHDRAWAL</h2>
+            <h2 className="section-title">PORTFOLIO BALANCE BY WITHDRAWAL RATE</h2>
             <p style={{ color: "#666", fontSize: 12, marginTop: -8, marginBottom: 14 }}>
-              Balance (area, left axis) · Withdrawal (bars, right axis) · Red shade =
-              negative-return years
+              Portfolio value over time for each withdrawal rate · Red shading = negative-return years
             </p>
             <div style={{ width: "100%", height: 380 }}>
               <ResponsiveContainer>
-                <ComposedChart
+                <LineChart
                   data={chartData}
                   margin={{ top: 10, right: 20, bottom: 20, left: 0 }}
                 >
-                  <defs>
-                    <linearGradient id="dwGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#00d4ff" stopOpacity={0.18} />
-                      <stop offset="95%" stopColor="#00d4ff" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
                   <CartesianGrid stroke="#1a1a28" strokeDasharray="3 3" />
                   <XAxis
                     dataKey="calendarYear"
                     stroke="#555"
                     tick={{ fill: "#666", fontSize: 11 }}
-                    label={{
-                      value: "Year",
-                      position: "insideBottom",
-                      offset: -10,
-                      fill: "#555",
-                      fontSize: 11,
+                    label={{ value: "Year", position: "insideBottom", offset: -10, fill: "#555", fontSize: 11 }}
+                  />
+                  <YAxis
+                    stroke="#555"
+                    tick={{ fill: "#666", fontSize: 11 }}
+                    tickFormatter={(v) => fmt(Number(v))}
+                  />
+                  <Tooltip content={<MultiTooltip exchangeRate={exchangeRate} allSims={allSims} />} />
+                  <Legend
+                    wrapperStyle={{ fontSize: 12, fontFamily: "'DM Mono', monospace", color: "#888", paddingTop: 8 }}
+                    formatter={(value) => value}
+                  />
+                  {negYears.map((cy) => (
+                    <ReferenceLine
+                      key={`neg-${cy}`}
+                      x={cy}
+                      stroke="#ff6b6b"
+                      strokeOpacity={0.1}
+                      strokeWidth={20}
+                    />
+                  ))}
+                  {RATES.map((r) => (
+                    <Line
+                      key={r}
+                      type="monotone"
+                      dataKey={`rate${r}`}
+                      name={`${r}%`}
+                      stroke={RATE_COLORS[r]}
+                      strokeWidth={2}
+                      dot={false}
+                      activeDot={{ r: 4 }}
+                    />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Withdrawal chart */}
+          <div className="section">
+            <h2 className="section-title">MONTHLY WITHDRAWAL BY RATE</h2>
+            <p style={{ color: "#555", fontSize: 12, marginTop: -8, marginBottom: 18 }}>
+              Monthly income at each rate · rises and falls with your portfolio value
+            </p>
+            <div style={{ width: "100%", height: 320 }}>
+              <ResponsiveContainer>
+                <AreaChart
+                  data={withdrawalChartData}
+                  margin={{ top: 8, right: 24, bottom: 8, left: 10 }}
+                >
+                  <defs>
+                    {RATES.map((r) => (
+                      <linearGradient key={r} id={`wdGrad${r}`} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={RATE_COLORS[r]} stopOpacity={0.12} />
+                        <stop offset="100%" stopColor={RATE_COLORS[r]} stopOpacity={0} />
+                      </linearGradient>
+                    ))}
+                  </defs>
+                  <CartesianGrid
+                    stroke="#1a1a28"
+                    strokeDasharray="0"
+                    vertical={false}
+                    strokeOpacity={0.6}
+                  />
+                  <XAxis
+                    dataKey="calendarYear"
+                    stroke="transparent"
+                    tick={{ fill: "#555", fontSize: 11, fontFamily: "'DM Mono', monospace" }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    stroke="transparent"
+                    tick={{ fill: "#555", fontSize: 11, fontFamily: "'DM Mono', monospace" }}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(v) =>
+                      exchangeRate
+                        ? `₵${(Number(v) * exchangeRate / 1000).toFixed(0)}K`
+                        : `$${(Number(v) / 1000).toFixed(0)}K`
+                    }
+                    width={52}
+                  />
+                  <Tooltip
+                    cursor={{ stroke: "#2a2a3a", strokeWidth: 1 }}
+                    content={({ active, payload, label }) => {
+                      if (!active || !payload?.length) return null;
+                      return (
+                        <div
+                          style={{
+                            background: "#09090f",
+                            border: "1px solid #1e1e2e",
+                            borderRadius: 10,
+                            padding: "12px 16px",
+                            fontFamily: "'DM Mono', monospace",
+                            fontSize: 12,
+                            minWidth: 200,
+                            boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
+                          }}
+                        >
+                          <div style={{ color: "#666", marginBottom: 10, fontSize: 11, letterSpacing: 1.5 }}>
+                            {label}
+                          </div>
+                          {[...payload].reverse().map((p, i) => {
+                            const usd = Number(p.value ?? 0);
+                            const ghs = exchangeRate ? usd * exchangeRate : null;
+                            return (
+                              <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 20, color: p.color, lineHeight: 2 }}>
+                                <span style={{ opacity: 0.85 }}>{p.name}</span>
+                                <span>
+                                  {fmt(usd)}/mo
+                                  {ghs !== null && (
+                                    <span style={{ color: "#666", fontSize: 10, marginLeft: 6 }}>
+                                      ₵{Math.round(ghs).toLocaleString()}
+                                    </span>
+                                  )}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
                     }}
                   />
-                  <YAxis
-                    yAxisId="bal"
-                    stroke="#555"
-                    tick={{ fill: "#666", fontSize: 11 }}
-                    tickFormatter={(v) => fmt(Number(v))}
+                  <Legend
+                    iconType="plainline"
+                    iconSize={16}
+                    wrapperStyle={{
+                      fontSize: 11,
+                      fontFamily: "'DM Mono', monospace",
+                      color: "#666",
+                      paddingTop: 12,
+                      letterSpacing: 1,
+                    }}
+                    formatter={(value) => `${value} RATE`}
                   />
-                  <YAxis
-                    yAxisId="wd"
-                    orientation="right"
-                    stroke="#555"
-                    tick={{ fill: "#666", fontSize: 11 }}
-                    tickFormatter={(v) => fmt(Number(v))}
-                  />
-                  <Tooltip content={<DWTooltip exchangeRate={exchangeRate} />} />
-                  {chartData
-                    .filter((d) => d.return < 0)
-                    .map((d) => (
-                      <ReferenceLine
-                        key={`neg-${d.calendarYear}`}
-                        yAxisId="bal"
-                        x={d.calendarYear}
-                        stroke="#ff6b6b"
-                        strokeOpacity={0.12}
-                        strokeWidth={24}
-                      />
-                    ))}
-                  <Area
-                    yAxisId="bal"
-                    type="monotone"
-                    dataKey="balance"
-                    name="Balance"
-                    stroke="#00d4ff"
-                    strokeWidth={2.5}
-                    fill="url(#dwGrad)"
-                    dot={false}
-                    activeDot={{ r: 4, fill: "#00d4ff" }}
-                  />
-                  <Bar
-                    yAxisId="wd"
-                    dataKey="withdrawal"
-                    name="Withdrawal"
-                    fill="#ffbe0b"
-                    fillOpacity={0.55}
-                    radius={[2, 2, 0, 0]}
-                    maxBarSize={16}
-                  />
-                </ComposedChart>
+                  {RATES.map((r) => (
+                    <Area
+                      key={r}
+                      type="monotone"
+                      dataKey={`wd${r}`}
+                      name={`${r}%`}
+                      stroke={RATE_COLORS[r]}
+                      strokeWidth={1.5}
+                      fill={`url(#wdGrad${r})`}
+                      dot={false}
+                      activeDot={{ r: 3, strokeWidth: 0 }}
+                    />
+                  ))}
+                </AreaChart>
               </ResponsiveContainer>
             </div>
           </div>
 
           {/* Year-by-year table */}
           <style>{`
-            .dw-table { min-width: 600px; }
+            .dw-table { min-width: 700px; }
             .dw-table th, .dw-table td { background: #0a0a14; }
             .dw-table th:nth-child(1), .dw-table td:nth-child(1) {
               position: sticky; left: 0; z-index: 2; min-width: 72px; white-space: nowrap;
@@ -878,57 +855,47 @@ export default function DynamicWithdrawal() {
             .dw-table tr:hover td { background: #0e0e1a; }
           `}</style>
           <div className="section">
-            <h2 className="section-title">YEAR-BY-YEAR DETAIL</h2>
+            <h2 className="section-title">YEAR-BY-YEAR PORTFOLIO BALANCE</h2>
             <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
               <table className="dw-table">
                 <thead>
                   <tr>
                     <th>Year</th>
                     <th>Return</th>
-                    <th>Opening Balance</th>
-                    <th>Annual Withdrawal (USD)</th>
-                    {exchangeRate && <th>Monthly GHS Withdrawal</th>}
-                    <th>Closing Balance</th>
+                    {RATES.map((r) => (
+                      <th key={r} style={{ color: RATE_COLORS[r] }}>{r}% Balance</th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {simData.map((d) => {
+                  {allSims[0].data.map((row, i) => {
                     const retColor =
-                      d.annualReturn < 0 ? "#ff6b6b" : d.annualReturn > 20 ? "#00ff87" : "#aaa";
-                    const balColor =
-                      d.portfolioAfter > portfolio
-                        ? "#00ff87"
-                        : d.portfolioAfter > portfolio * 0.5
-                          ? "#00d4ff"
-                          : d.portfolioAfter > portfolio * 0.25
-                            ? "#ffbe0b"
-                            : "#ff6b6b";
-                    const monthlyGHSWithdrawal =
-                      exchangeRate && d.year > 0 ? (d.withdrawal / 12) * exchangeRate : null;
+                      row.annualReturn < 0 ? "#ff6b6b" : row.annualReturn > 20 ? "#00ff87" : "#aaa";
                     return (
-                      <tr key={d.year}>
-                        <td style={{ color: "#888" }}>{d.year === 0 ? "Start" : d.calendarYear}</td>
+                      <tr key={row.year}>
+                        <td style={{ color: "#888" }}>
+                          {row.year === 0 ? "Start" : row.calendarYear}
+                        </td>
                         <td style={{ color: retColor, fontWeight: 500 }}>
-                          {d.year === 0
+                          {row.year === 0
                             ? "—"
-                            : `${d.annualReturn >= 0 ? "+" : ""}${d.annualReturn.toFixed(1)}%`}
+                            : `${row.annualReturn >= 0 ? "+" : ""}${row.annualReturn.toFixed(1)}%`}
                         </td>
-                        <td style={{ color: "#aaa" }}>
-                          {d.year === 0 ? fmt(d.portfolioAfter) : fmt(d.portfolioBefore)}
-                        </td>
-                        <td style={{ color: "#ffbe0b", fontWeight: 500 }}>
-                          {d.year === 0 ? "—" : fmt(d.withdrawal)}
-                        </td>
-                        {exchangeRate && (
-                          <td style={{ color: "#00ff87", fontSize: 12 }}>
-                            {monthlyGHSWithdrawal !== null
-                              ? `₵${Math.round(monthlyGHSWithdrawal).toLocaleString()}/mo`
-                              : "—"}
-                          </td>
-                        )}
-                        <td style={{ color: balColor, fontWeight: 500 }}>
-                          {fmt(d.portfolioAfter)}
-                        </td>
+                        {allSims.map(({ rate, data }) => {
+                          const val = data[i]?.portfolioAfter ?? 0;
+                          const color =
+                            val > portfolio ? "#00ff87" : val > portfolio * 0.5 ? "#00d4ff" : val > portfolio * 0.25 ? "#ffbe0b" : "#ff6b6b";
+                          return (
+                            <td key={rate} style={{ color, fontWeight: 500 }}>
+                              {fmt(val)}
+                              {exchangeRate ? (
+                                <span style={{ color: "#555", fontSize: 10, marginLeft: 5 }}>
+                                  {fmtGHS(val, exchangeRate)}
+                                </span>
+                              ) : null}
+                            </td>
+                          );
+                        })}
                       </tr>
                     );
                   })}
@@ -937,39 +904,28 @@ export default function DynamicWithdrawal() {
             </div>
           </div>
 
-          {/* Footer meta */}
           <div
             className="section"
-            style={{
-              background: "#0a0a14",
-              border: "1px solid #1a1a28",
-              borderRadius: 12,
-              padding: "16px 20px",
-            }}
+            style={{ background: "#0a0a14", border: "1px solid #1a1a28", borderRadius: 12, padding: "16px 20px" }}
           >
             <div style={{ display: "flex", gap: 24, flexWrap: "wrap", fontSize: 12 }}>
               <div>
                 <span style={{ color: "#555", letterSpacing: 1 }}>DATA SOURCE</span>
-                <span style={{ color: "#aaa", marginLeft: 10 }}>
-                  S&P 500 Total Return {MIN_YEAR}–{MAX_YEAR}
-                </span>
+                <span style={{ color: "#aaa", marginLeft: 10 }}>S&P 500 Total Return {MIN_YEAR}–{MAX_YEAR}</span>
               </div>
               <div>
                 <span style={{ color: "#555", letterSpacing: 1 }}>WITHDRAWAL RULE</span>
-                <span style={{ color: "#00ff87", marginLeft: 10 }}>
-                  {rate}% of current portfolio value each year
-                </span>
+                <span style={{ color: "#00ff87", marginLeft: 10 }}>4 / 5 / 6 / 7 / 8% of current portfolio value each year</span>
               </div>
               <div>
                 <span style={{ color: "#555", letterSpacing: 1 }}>SEQUENCE TESTED</span>
-                <span style={{ color: "#aaa", marginLeft: 10 }}>
-                  {startYear} → {endYear}
-                </span>
+                <span style={{ color: "#aaa", marginLeft: 10 }}>{startYear} → {endYear}</span>
               </div>
             </div>
           </div>
         </>
-      )}
+        );
+      })()}
 
       {!calculated && (
         <div
@@ -978,7 +934,7 @@ export default function DynamicWithdrawal() {
         >
           <div style={{ fontSize: 36, marginBottom: 12 }}>📈</div>
           <div style={{ fontSize: 14, letterSpacing: 1 }}>
-            Enter your details above and press CALCULATE to run the historical simulation
+            Enter your details above and press CALCULATE to compare all five withdrawal rates
           </div>
         </div>
       )}
