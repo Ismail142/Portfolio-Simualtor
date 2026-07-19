@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Area,
+  AreaChart,
   CartesianGrid,
   Legend,
   Line,
@@ -725,57 +727,82 @@ export default function DynamicWithdrawal() {
           {/* Withdrawal chart */}
           <div className="section">
             <h2 className="section-title">MONTHLY WITHDRAWAL BY RATE</h2>
-            <p style={{ color: "#666", fontSize: 12, marginTop: -8, marginBottom: 14 }}>
-              Monthly withdrawal amount over time for each rate · higher rate = more income but faster portfolio draw-down
+            <p style={{ color: "#555", fontSize: 12, marginTop: -8, marginBottom: 18 }}>
+              Monthly income at each rate · rises and falls with your portfolio value
             </p>
-            <div style={{ width: "100%", height: 340 }}>
+            <div style={{ width: "100%", height: 320 }}>
               <ResponsiveContainer>
-                <LineChart
+                <AreaChart
                   data={withdrawalChartData}
-                  margin={{ top: 10, right: 20, bottom: 20, left: 0 }}
+                  margin={{ top: 8, right: 24, bottom: 8, left: 10 }}
                 >
-                  <CartesianGrid stroke="#1a1a28" strokeDasharray="3 3" />
+                  <defs>
+                    {RATES.map((r) => (
+                      <linearGradient key={r} id={`wdGrad${r}`} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={RATE_COLORS[r]} stopOpacity={0.12} />
+                        <stop offset="100%" stopColor={RATE_COLORS[r]} stopOpacity={0} />
+                      </linearGradient>
+                    ))}
+                  </defs>
+                  <CartesianGrid
+                    stroke="#1a1a28"
+                    strokeDasharray="0"
+                    vertical={false}
+                    strokeOpacity={0.6}
+                  />
                   <XAxis
                     dataKey="calendarYear"
-                    stroke="#555"
-                    tick={{ fill: "#666", fontSize: 11 }}
-                    label={{ value: "Year", position: "insideBottom", offset: -10, fill: "#555", fontSize: 11 }}
+                    stroke="transparent"
+                    tick={{ fill: "#555", fontSize: 11, fontFamily: "'DM Mono', monospace" }}
+                    tickLine={false}
+                    axisLine={false}
                   />
                   <YAxis
-                    stroke="#555"
-                    tick={{ fill: "#666", fontSize: 11 }}
+                    stroke="transparent"
+                    tick={{ fill: "#555", fontSize: 11, fontFamily: "'DM Mono', monospace" }}
+                    tickLine={false}
+                    axisLine={false}
                     tickFormatter={(v) =>
                       exchangeRate
-                        ? `₵${Math.round(Number(v) * exchangeRate).toLocaleString()}`
-                        : fmt(Number(v))
+                        ? `₵${(Number(v) * exchangeRate / 1000).toFixed(0)}K`
+                        : `$${(Number(v) / 1000).toFixed(0)}K`
                     }
+                    width={52}
                   />
                   <Tooltip
+                    cursor={{ stroke: "#2a2a3a", strokeWidth: 1 }}
                     content={({ active, payload, label }) => {
                       if (!active || !payload?.length) return null;
                       return (
                         <div
                           style={{
-                            background: "#0a0a12",
-                            border: "1px solid #1a1a28",
-                            borderRadius: 8,
-                            padding: "10px 14px",
+                            background: "#09090f",
+                            border: "1px solid #1e1e2e",
+                            borderRadius: 10,
+                            padding: "12px 16px",
                             fontFamily: "'DM Mono', monospace",
                             fontSize: 12,
-                            minWidth: 190,
+                            minWidth: 200,
+                            boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
                           }}
                         >
-                          <div style={{ color: "#888", marginBottom: 8, fontSize: 11, letterSpacing: 1 }}>{label}</div>
-                          {payload.map((p, i) => {
+                          <div style={{ color: "#666", marginBottom: 10, fontSize: 11, letterSpacing: 1.5 }}>
+                            {label}
+                          </div>
+                          {[...payload].reverse().map((p, i) => {
                             const usd = Number(p.value ?? 0);
                             const ghs = exchangeRate ? usd * exchangeRate : null;
                             return (
-                              <div key={i} style={{ color: p.color, lineHeight: 1.6, marginBottom: 4 }}>
-                                <span style={{ fontWeight: 600 }}>{p.name}</span>{" "}
-                                {fmt(usd)}/mo
-                                {ghs !== null && (
-                                  <span style={{ color: "#888", fontSize: 10 }}> · ₵{Math.round(ghs).toLocaleString()}/mo</span>
-                                )}
+                              <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 20, color: p.color, lineHeight: 2 }}>
+                                <span style={{ opacity: 0.85 }}>{p.name}</span>
+                                <span>
+                                  {fmt(usd)}/mo
+                                  {ghs !== null && (
+                                    <span style={{ color: "#666", fontSize: 10, marginLeft: 6 }}>
+                                      ₵{Math.round(ghs).toLocaleString()}
+                                    </span>
+                                  )}
+                                </span>
                               </div>
                             );
                           })}
@@ -784,31 +811,31 @@ export default function DynamicWithdrawal() {
                     }}
                   />
                   <Legend
-                    wrapperStyle={{ fontSize: 12, fontFamily: "'DM Mono', monospace", color: "#888", paddingTop: 8 }}
-                    formatter={(value) => value}
+                    iconType="plainline"
+                    iconSize={16}
+                    wrapperStyle={{
+                      fontSize: 11,
+                      fontFamily: "'DM Mono', monospace",
+                      color: "#666",
+                      paddingTop: 12,
+                      letterSpacing: 1,
+                    }}
+                    formatter={(value) => `${value} RATE`}
                   />
-                  {negYears.map((cy) => (
-                    <ReferenceLine
-                      key={`wdneg-${cy}`}
-                      x={cy}
-                      stroke="#ff6b6b"
-                      strokeOpacity={0.1}
-                      strokeWidth={20}
-                    />
-                  ))}
                   {RATES.map((r) => (
-                    <Line
+                    <Area
                       key={r}
                       type="monotone"
                       dataKey={`wd${r}`}
                       name={`${r}%`}
                       stroke={RATE_COLORS[r]}
-                      strokeWidth={2}
+                      strokeWidth={1.5}
+                      fill={`url(#wdGrad${r})`}
                       dot={false}
-                      activeDot={{ r: 4 }}
+                      activeDot={{ r: 3, strokeWidth: 0 }}
                     />
                   ))}
-                </LineChart>
+                </AreaChart>
               </ResponsiveContainer>
             </div>
           </div>
