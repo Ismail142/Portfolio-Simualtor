@@ -105,13 +105,16 @@ const MultiTooltip = ({
   payload,
   label,
   exchangeRate,
+  allSims,
 }: {
   active?: boolean;
   payload?: { name?: string; value?: number; color?: string }[];
   label?: number | string;
   exchangeRate: number | null;
+  allSims: { rate: number; data: SimYear[] }[];
 }) => {
   if (!active || !payload?.length) return null;
+  const calYear = Number(label);
   return (
     <div
       style={{
@@ -121,16 +124,28 @@ const MultiTooltip = ({
         padding: "10px 14px",
         fontFamily: "'DM Mono', monospace",
         fontSize: 12,
+        minWidth: 200,
       }}
     >
-      <div style={{ color: "#888", marginBottom: 6, fontSize: 11, letterSpacing: 1 }}>{label}</div>
+      <div style={{ color: "#888", marginBottom: 8, fontSize: 11, letterSpacing: 1 }}>{label}</div>
       {payload.map((p, i) => {
-        const v = Number(p.value ?? 0);
-        const ghs = fmtGHS(v, exchangeRate);
+        const rateNum = Number(String(p.name).replace("%", ""));
+        const sim = allSims.find((s) => s.rate === rateNum);
+        const row = sim?.data.find((d) => d.calendarYear === calYear);
+        const monthlyUSD = row && row.year > 0 ? row.withdrawal / 12 : null;
+        const monthlyGHS = monthlyUSD && exchangeRate ? monthlyUSD * exchangeRate : null;
+        const bal = Number(p.value ?? 0);
         return (
-          <div key={i} style={{ color: p.color, lineHeight: 1.9 }}>
-            {p.name}: {fmt(v)}
-            {ghs ? <span style={{ color: "#666", fontSize: 10 }}> · {ghs}</span> : null}
+          <div key={i} style={{ color: p.color, lineHeight: 1.6, marginBottom: 6 }}>
+            <div style={{ fontWeight: 600 }}>{p.name} · {fmt(bal)}</div>
+            {monthlyUSD !== null && (
+              <div style={{ fontSize: 11, color: "#aaa" }}>
+                Monthly: {fmt(monthlyUSD)}
+                {monthlyGHS !== null && (
+                  <span style={{ color: "#666" }}> · ₵{Math.round(monthlyGHS).toLocaleString()}/mo</span>
+                )}
+              </div>
+            )}
           </div>
         );
       })}
@@ -565,13 +580,12 @@ export default function DynamicWithdrawal() {
 
                     <div style={{ marginBottom: 8 }}>
                       <div style={{ fontSize: 10, color: "#555", letterSpacing: 1.5 }}>AVG MONTHLY WITHDRAWAL</div>
-                      {exchangeRate ? (
-                        <div style={{ fontSize: 17, fontFamily: "'Bebas Neue', sans-serif", color: "#aaa" }}>
-                          {fmtGHS(avgMonthly, exchangeRate)}<span style={{ fontSize: 11, color: "#666" }}>/mo</span>
-                        </div>
-                      ) : (
-                        <div style={{ fontSize: 17, fontFamily: "'Bebas Neue', sans-serif", color: "#aaa" }}>
-                          {fmt(avgMonthly)}<span style={{ fontSize: 11, color: "#666" }}>/mo</span>
+                      <div style={{ fontSize: 17, fontFamily: "'Bebas Neue', sans-serif", color: "#aaa" }}>
+                        {fmt(avgMonthly)}<span style={{ fontSize: 11, color: "#666" }}>/mo</span>
+                      </div>
+                      {exchangeRate && (
+                        <div style={{ fontSize: 12, color: "#888" }}>
+                          {fmtGHS(avgMonthly, exchangeRate)}/mo
                         </div>
                       )}
                     </div>
@@ -650,7 +664,7 @@ export default function DynamicWithdrawal() {
                     tick={{ fill: "#666", fontSize: 11 }}
                     tickFormatter={(v) => fmt(Number(v))}
                   />
-                  <Tooltip content={<MultiTooltip exchangeRate={exchangeRate} />} />
+                  <Tooltip content={<MultiTooltip exchangeRate={exchangeRate} allSims={allSims} />} />
                   <Legend
                     wrapperStyle={{ fontSize: 12, fontFamily: "'DM Mono', monospace", color: "#888", paddingTop: 8 }}
                     formatter={(value) => value}
