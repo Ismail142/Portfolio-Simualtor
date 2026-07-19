@@ -435,7 +435,13 @@ export default function DynamicWithdrawal() {
         are simulated simultaneously using real S&P 500 returns {MIN_YEAR}–{MAX_YEAR}.
       </div>
 
-      {calculated && (
+      {calculated && (() => {
+        const winnerRate = allSims.reduce<{ rate: number; bal: number }>((best, s) => {
+          const bal = s.data[s.data.length - 1].portfolioAfter;
+          return bal > best.bal ? { rate: s.rate, bal } : best;
+        }, { rate: RATES[0], bal: allSims[0].data[allSims[0].data.length - 1].portfolioAfter }).rate;
+
+        return (
         <>
           {/* Rate comparison cards */}
           <div className="section">
@@ -459,6 +465,7 @@ export default function DynamicWithdrawal() {
                 const totalWithdrawn = rows.reduce((s, d) => s + d.withdrawal, 0);
                 const avgMonthly = rows.length > 0 ? totalWithdrawn / rows.length / 12 : 0;
                 const color = RATE_COLORS[rate];
+                const isWinner = rate === winnerRate;
                 const survivalColor =
                   finalBalance >= portfolio
                     ? "#00ff87"
@@ -480,12 +487,32 @@ export default function DynamicWithdrawal() {
                   <div
                     key={rate}
                     style={{
-                      background: "#0e0e18",
-                      border: `2px solid ${color}44`,
+                      background: isWinner ? "#0d1a12" : "#0e0e18",
+                      border: isWinner ? `2px solid ${color}` : `2px solid ${color}44`,
                       borderRadius: 12,
                       padding: "18px 20px",
+                      position: "relative",
                     }}
                   >
+                    {isWinner && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: -10,
+                          right: 14,
+                          background: color,
+                          color: "#050510",
+                          fontFamily: "'Bebas Neue', sans-serif",
+                          fontSize: 11,
+                          letterSpacing: 2,
+                          padding: "2px 10px",
+                          borderRadius: 4,
+                        }}
+                      >
+                        👑 WINNER
+                      </div>
+                    )}
+
                     <div
                       style={{
                         fontFamily: "'Bebas Neue', sans-serif",
@@ -510,11 +537,14 @@ export default function DynamicWithdrawal() {
 
                     <div style={{ marginBottom: 8 }}>
                       <div style={{ fontSize: 10, color: "#555", letterSpacing: 1.5 }}>AVG MONTHLY WITHDRAWAL</div>
-                      <div style={{ fontSize: 17, fontFamily: "'Bebas Neue', sans-serif", color: "#aaa" }}>
-                        {fmt(avgMonthly)}<span style={{ fontSize: 11, color: "#666" }}>/mo</span>
-                      </div>
-                      {exchangeRate && (
-                        <div style={{ fontSize: 11, color: "#888" }}>{fmtGHS(avgMonthly, exchangeRate)}/mo</div>
+                      {exchangeRate ? (
+                        <div style={{ fontSize: 17, fontFamily: "'Bebas Neue', sans-serif", color: "#aaa" }}>
+                          {fmtGHS(avgMonthly, exchangeRate)}<span style={{ fontSize: 11, color: "#666" }}>/mo</span>
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: 17, fontFamily: "'Bebas Neue', sans-serif", color: "#aaa" }}>
+                          {fmt(avgMonthly)}<span style={{ fontSize: 11, color: "#666" }}>/mo</span>
+                        </div>
                       )}
                     </div>
 
@@ -707,7 +737,8 @@ export default function DynamicWithdrawal() {
             </div>
           </div>
         </>
-      )}
+        );
+      })()}
 
       {!calculated && (
         <div
