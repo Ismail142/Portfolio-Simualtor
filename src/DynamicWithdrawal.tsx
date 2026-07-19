@@ -473,8 +473,76 @@ export default function DynamicWithdrawal() {
           return avg > best.avg ? { rate: s.rate, avg } : best;
         }, { rate: RATES[0], avg: 0 }).rate;
 
+        const rateStats = allSims.map(({ rate, data }) => {
+          const last = data[data.length - 1];
+          const finalBalance = last.portfolioAfter;
+          const retainedPct = (finalBalance / portfolio) * 100;
+          const rows = data.slice(1);
+          const totalWithdrawn = rows.reduce((s, d) => s + d.withdrawal, 0);
+          const avgMonthly = rows.length > 0 ? totalWithdrawn / rows.length / 12 : 0;
+          const cagr = years > 0 && portfolio > 0 ? (Math.pow(finalBalance / portfolio, 1 / years) - 1) * 100 : 0;
+          const status: "thriving" | "survived" | "atrisk" | "depleted" =
+            finalBalance >= portfolio ? "thriving"
+            : retainedPct >= 50 ? "survived"
+            : retainedPct >= 10 ? "atrisk"
+            : "depleted";
+          return { rate, finalBalance, retainedPct, avgMonthly, cagr, status };
+        });
+
+        const recommended = [...rateStats].reverse().find((s) => s.status === "thriving")
+          ?? [...rateStats].reverse().find((s) => s.status === "survived")
+          ?? [...rateStats].reverse().find((s) => s.status === "atrisk")
+          ?? rateStats[0];
+
+        const recColor = RATE_COLORS[recommended.rate];
+        const recReasonMap: Record<string, string> = {
+          thriving: `At ${recommended.rate}% your portfolio ends this period worth more than it started — you're withdrawing less than the market is returning. This is the highest rate where your wealth still grows net of withdrawals.`,
+          survived: `At ${recommended.rate}% your portfolio survives the full period with ${recommended.retainedPct.toFixed(0)}% of its starting value intact. Going higher depletes it too aggressively for this historical sequence.`,
+          atrisk: `No rate keeps your portfolio fully intact over this period. At ${recommended.rate}% it retains ${recommended.retainedPct.toFixed(0)}% — the least-bad outcome that still leaves meaningful capital. Consider a shorter horizon or larger starting value.`,
+          depleted: `All rates deplete the portfolio over this sequence. 4% causes the least damage. Consider a shorter horizon, higher starting value, or a different start year.`,
+        };
+        const recReason = recReasonMap[recommended.status];
+
         return (
         <>
+          {/* Recommendation */}
+          <div
+            className="section"
+            style={{
+              background: `${recColor}0d`,
+              border: `2px solid ${recColor}55`,
+              borderRadius: 14,
+              padding: "20px 24px",
+            }}
+          >
+            <div style={{ fontSize: 11, color: "#666", letterSpacing: 2, marginBottom: 6 }}>
+              RECOMMENDATION FOR THIS SIMULATION
+            </div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 14, flexWrap: "wrap", marginBottom: 10 }}>
+              <div
+                style={{
+                  fontFamily: "'Bebas Neue', sans-serif",
+                  fontSize: 52,
+                  color: recColor,
+                  lineHeight: 1,
+                }}
+              >
+                {recommended.rate}%
+              </div>
+              <div>
+                <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, color: "#fff", letterSpacing: 2 }}>
+                  WITHDRAWAL RATE
+                </div>
+                <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>
+                  {fmt(recommended.avgMonthly)}/mo avg
+                  {exchangeRate ? ` · ${fmtGHS(recommended.avgMonthly, exchangeRate)}/mo` : ""}
+                  {" "}· CAGR {recommended.cagr >= 0 ? "+" : ""}{recommended.cagr.toFixed(2)}%
+                </div>
+              </div>
+            </div>
+            <p style={{ fontSize: 13, color: "#aaa", lineHeight: 1.8, margin: 0 }}>{recReason}</p>
+          </div>
+
           {/* Rate comparison cards */}
           <div className="section">
             <h2 className="section-title">
