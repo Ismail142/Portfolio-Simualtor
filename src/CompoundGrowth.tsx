@@ -27,8 +27,8 @@ const fmt = (n: number) =>
   n >= 1_000_000
     ? `$${(n / 1_000_000).toFixed(2)}M`
     : n >= 1000
-      ? `$${(n / 1000).toFixed(0)}K`
-      : `$${Math.round(n)}`;
+      ? `$${(n / 1000).toFixed(2)}K`
+      : `$${n.toFixed(2)}`;
 
 function computeGrowth(
   principal: number,
@@ -51,7 +51,7 @@ function computeGrowth(
         contributionPerPeriod * ((Math.pow(1 + ratePerPeriod, n) - 1) / ratePerPeriod);
     }
     const contributed = principal + contributionPerPeriod * n;
-    data.push({ year: y, value: Math.round(value), contributed: Math.round(contributed) });
+    data.push({ year: y, value, contributed });
   }
   return data;
 }
