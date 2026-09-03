@@ -3,7 +3,7 @@ import CompoundGrowth from "./CompoundGrowth";
 import RetirementDrawdown from "./RetirementDrawdown";
 import PortfolioYield from "./PortfolioYield";
 import DynamicWithdrawal from "./DynamicWithdrawal";
-import GainBasedWithdrawal from "./GainBasedWithdrawal";
+import SP500Returns from "./SP500Returns";
 import {
   CartesianGrid,
   Legend,
@@ -91,9 +91,18 @@ const CustomTooltip = ({
   );
 };
 
-type Page = "simulator" | "compound" | "retirement" | "yield" | "dynamic" | "gain";
+type Page = "simulator" | "compound" | "retirement" | "yield" | "dynamic" | "sp500";
 
 const STORAGE_KEY = "portfolio-simulator-inputs";
+
+const NAV_ITEMS: { key: Page; label: string; short: string }[] = [
+  { key: "simulator", label: "Portfolio Simulator", short: "SIMULATOR" },
+  { key: "compound", label: "Compound Growth", short: "COMPOUND" },
+  { key: "retirement", label: "Retirement Planner", short: "RETIREMENT" },
+  { key: "yield", label: "Yield Calculator", short: "YIELD" },
+  { key: "dynamic", label: "Dynamic Withdrawal", short: "DYNAMIC" },
+  { key: "sp500", label: "S&P 500 Returns", short: "S&P 500" },
+];
 
 export default function App() {
   const [page, setPage] = useState<Page>(() => {
@@ -103,7 +112,7 @@ export default function App() {
       if (saved === "retirement") return "retirement";
       if (saved === "yield") return "yield";
       if (saved === "dynamic") return "dynamic";
-      if (saved === "gain") return "gain";
+      if (saved === "sp500") return "sp500";
       return "simulator";
     } catch {
       return "simulator";
@@ -347,79 +356,65 @@ export default function App() {
         .mode-switch { display: inline-flex; border: 1px solid #1a1a28; border-radius: 8px; overflow: hidden; background: #0e0e18; }
         .mode-btn { background: transparent; color: #666; border: none; padding: 10px 18px; font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 1.5px; cursor: pointer; transition: all 0.15s; }
         .mode-btn.active { background: #00ff8722; color: #00ff87; }
-        .topbar { position: sticky; top: 0; z-index: 50; background: #07071099; backdrop-filter: blur(12px); border-bottom: 1px solid #1a1a28; }
-        .topbar-inner { max-width: 1200px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 52px; gap: 16px; }
-        .topbar-brand { font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 3px; color: #fff; white-space: nowrap; }
-        .nav-pills { display: none; }
-        .hamburger { display: flex; flex-direction: column; justify-content: center; gap: 5px; background: transparent; border: none; cursor: pointer; padding: 6px; }
-        .hamburger span { display: block; width: 22px; height: 2px; background: #aaa; border-radius: 2px; transition: all 0.2s; }
+        .topbar { position: sticky; top: 0; z-index: 50; background: rgba(7,7,16,0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-bottom: 1px solid #1a1a28; }
+        .topbar-inner { max-width: 1200px; margin: 0 auto; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; height: 56px; gap: 12px; }
+        .topbar-brand { font-family: 'Bebas Neue', sans-serif; font-size: 17px; letter-spacing: 3px; color: #fff; white-space: nowrap; flex-shrink: 0; }
+        .nav-pills { display: none; align-items: center; gap: 4px; flex: 1; justify-content: flex-end; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; }
+        .nav-pills::-webkit-scrollbar { display: none; }
+        .nav-pill { background: transparent; border: 1px solid transparent; color: #666; padding: 7px 12px; border-radius: 8px; cursor: pointer; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 1px; white-space: nowrap; transition: all 0.15s ease; }
+        .nav-pill:hover { color: #ccc; background: #ffffff08; border-color: #222; }
+        .nav-pill.active { color: #00ff87; background: #00ff8714; border-color: #00ff8744; box-shadow: 0 0 12px #00ff8718; }
+        .hamburger { display: flex; flex-direction: column; justify-content: center; gap: 5px; background: transparent; border: 1px solid #1a1a28; border-radius: 8px; cursor: pointer; padding: 10px; flex-shrink: 0; transition: border-color 0.15s; }
+        .hamburger:hover { border-color: #333; }
+        .hamburger span { display: block; width: 18px; height: 2px; background: #aaa; border-radius: 2px; transition: all 0.25s ease; }
+        .hamburger.open { border-color: #00ff87; }
+        .hamburger.open span { background: #00ff87; }
         .hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
-        .hamburger.open span:nth-child(2) { opacity: 0; }
+        .hamburger.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
         .hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
-        .mobile-menu { display: block; position: absolute; top: 52px; left: 0; right: 0; background: #0e0e18; border-bottom: 1px solid #1a1a28; z-index: 49; }
-        .mobile-menu-item { display: block; width: 100%; background: transparent; border: none; border-bottom: 1px solid #1a1a28; color: #666; font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 2px; padding: 16px 24px; text-align: left; cursor: pointer; transition: all 0.15s; }
+        .mobile-menu { display: block; position: absolute; top: 56px; left: 0; right: 0; background: #0c0c14; border-bottom: 1px solid #1a1a28; z-index: 49; box-shadow: 0 12px 40px rgba(0,0,0,0.45); animation: menuSlide 0.2s ease; }
+        @keyframes menuSlide { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+        .mobile-menu-item { display: flex; align-items: center; width: 100%; background: transparent; border: none; border-bottom: 1px solid #14141c; color: #777; font-family: 'DM Mono', monospace; font-size: 13px; letter-spacing: 1.5px; padding: 15px 20px; text-align: left; cursor: pointer; transition: all 0.15s; }
         .mobile-menu-item:last-child { border-bottom: none; }
-        .mobile-menu-item.active { color: #00ff87; background: #00ff8710; }
-        .mobile-menu-item:hover:not(.active) { color: #aaa; background: #ffffff08; }
-        .mobile-menu-item .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: currentColor; margin-right: 12px; opacity: 0.6; }
+        .mobile-menu-item.active { color: #00ff87; background: linear-gradient(90deg, #00ff8712 0%, transparent 100%); }
+        .mobile-menu-item:hover:not(.active) { color: #ccc; background: #ffffff06; }
+        .mobile-menu-item .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: currentColor; margin-right: 14px; opacity: 0.5; flex-shrink: 0; }
+        .mobile-menu-item.active .dot { opacity: 1; box-shadow: 0 0 8px currentColor; }
+        .menu-backdrop { position: fixed; inset: 0; top: 56px; background: rgba(0,0,0,0.4); z-index: 48; }
+        @media (min-width: 900px) {
+          .nav-pills { display: flex; }
+          .hamburger { display: none; }
+          .mobile-menu, .menu-backdrop { display: none !important; }
+          .topbar-inner { padding: 0 24px; }
+        }
+        @media (min-width: 1100px) {
+          .nav-pill { font-size: 12px; padding: 8px 14px; letter-spacing: 1.2px; }
+        }
       `}</style>
 
-      <div className="topbar" style={{ position: "sticky", top: 0, zIndex: 50 }}>
+      <div className="topbar">
         <div className="topbar-inner">
           <span className="topbar-brand">FINANCE TOOLS</span>
 
-          {/* Desktop pills */}
-          <nav className="nav-pills">
-            <button
-              type="button"
-              className={`nav-pill ${page === "simulator" ? "active" : ""}`}
-              onClick={() => navigateTo("simulator")}
-            >
-              PORTFOLIO SIMULATOR
-            </button>
-            <button
-              type="button"
-              className={`nav-pill ${page === "compound" ? "active" : ""}`}
-              onClick={() => navigateTo("compound")}
-            >
-              COMPOUND GROWTH
-            </button>
-            <button
-              type="button"
-              className={`nav-pill ${page === "retirement" ? "active" : ""}`}
-              onClick={() => navigateTo("retirement")}
-            >
-              RETIREMENT PLANNER
-            </button>
-            <button
-              type="button"
-              className={`nav-pill ${page === "yield" ? "active" : ""}`}
-              onClick={() => navigateTo("yield")}
-            >
-              YIELD CALCULATOR
-            </button>
-            <button
-              type="button"
-              className={`nav-pill ${page === "dynamic" ? "active" : ""}`}
-              onClick={() => navigateTo("dynamic")}
-            >
-              DYNAMIC WITHDRAWAL
-            </button>
-            <button
-              type="button"
-              className={`nav-pill ${page === "gain" ? "active" : ""}`}
-              onClick={() => navigateTo("gain")}
-            >
-              SMART WITHDRAWAL
-            </button>
+          <nav className="nav-pills" aria-label="Main navigation">
+            {NAV_ITEMS.map(({ key, short }) => (
+              <button
+                key={key}
+                type="button"
+                className={`nav-pill ${page === key ? "active" : ""}`}
+                onClick={() => navigateTo(key)}
+              >
+                {short}
+              </button>
+            ))}
           </nav>
 
-          {/* Mobile hamburger */}
           <button
             type="button"
             className={`hamburger ${menuOpen ? "open" : ""}`}
             onClick={() => setMenuOpen((o) => !o)}
             aria-label="Toggle menu"
+            aria-expanded={menuOpen}
           >
             <span />
             <span />
@@ -427,30 +422,24 @@ export default function App() {
           </button>
         </div>
 
-        {/* Mobile dropdown */}
         {menuOpen && (
-          <div className="mobile-menu">
-            {(
-              [
-                { key: "simulator", label: "Portfolio Simulator" },
-                { key: "compound", label: "Compound Growth" },
-                { key: "retirement", label: "Retirement Planner" },
-                { key: "yield", label: "Yield Calculator" },
-                { key: "dynamic", label: "Dynamic Withdrawal" },
-                { key: "gain", label: "Smart Withdrawal" },
-              ] as { key: Page; label: string }[]
-            ).map(({ key, label }) => (
-              <button
-                key={key}
-                type="button"
-                className={`mobile-menu-item ${page === key ? "active" : ""}`}
-                onClick={() => navigateTo(key)}
-              >
-                <span className="dot" />
-                {label}
-              </button>
-            ))}
-          </div>
+          <>
+            <div className="menu-backdrop" onClick={() => setMenuOpen(false)} />
+            <div className="mobile-menu" role="menu">
+              {NAV_ITEMS.map(({ key, label }) => (
+                <button
+                  key={key}
+                  type="button"
+                  role="menuitem"
+                  className={`mobile-menu-item ${page === key ? "active" : ""}`}
+                  onClick={() => navigateTo(key)}
+                >
+                  <span className="dot" />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </>
         )}
       </div>
 
@@ -475,7 +464,7 @@ export default function App() {
                     ? "PORTFOLIO YIELD CALCULATOR"
                     : page === "dynamic"
                       ? "DYNAMIC WITHDRAWAL SIMULATOR"
-                      : "SMART WITHDRAWAL SIMULATOR"}
+                      : "S&P 500 RETURNS"}
           </h1>
           <p style={{ color: "#777", margin: "4px 0 0", fontSize: 13 }}>
             {page === "simulator"
@@ -488,7 +477,7 @@ export default function App() {
                     ? "Enter USD or GHS value · see monthly and annual yield at 4–8% · live currency conversion"
                     : page === "dynamic"
                       ? `Test dynamic withdrawal against real S&P 500 returns 1926–${new Date().getFullYear()} · USD & GHS`
-                      : "Withdrawal rate auto-adjusts 4–8% based on portfolio gain vs cost basis · historical S&P 500"}
+                      : "Rolling 30-year windows · annual return distributions & CAGR · best / median / worst periods"}
           </p>
         </header>
 
@@ -497,7 +486,7 @@ export default function App() {
           {page === "retirement" && <RetirementDrawdown />}
           {page === "yield" && <PortfolioYield />}
           {page === "dynamic" && <DynamicWithdrawal />}
-          {page === "gain" && <GainBasedWithdrawal />}
+          {page === "sp500" && <SP500Returns />}
           {page === "simulator" && (
             <>
               <div
