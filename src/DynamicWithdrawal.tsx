@@ -515,13 +515,32 @@ export default function DynamicWithdrawal() {
                   RATE COMPARISON · START {startYear} → {endYear} · {years} YEARS
                 </h2>
 
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                    gap: 12,
-                  }}
-                >
+                <style>{`
+                  .rate-cards-grid {
+                    display: grid;
+                    gap: 12px;
+                    grid-template-columns: 1fr;
+                  }
+                  .rate-cards-grid > * {
+                    min-width: 0;
+                  }
+                  @media (min-width: 480px) {
+                    .rate-cards-grid {
+                      grid-template-columns: repeat(2, 1fr);
+                    }
+                  }
+                  @media (min-width: 720px) {
+                    .rate-cards-grid {
+                      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+                    }
+                  }
+                  @media (min-width: 1100px) {
+                    .rate-cards-grid {
+                      grid-template-columns: repeat(5, 1fr);
+                    }
+                  }
+                `}</style>
+                <div className="rate-cards-grid">
                   {allSims.map(({ rate, data }) => {
                     const last = data[data.length - 1];
                     const finalBalance = last.portfolioAfter;
