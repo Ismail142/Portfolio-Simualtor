@@ -42,8 +42,8 @@ function simulatePortfolio(
     }
     data.push({
       year: y,
-      value: Math.max(0, Math.round(value)),
-      withdrawal: Math.round(withdrawal),
+      value: Math.max(0, Math.round(value * 100) / 100),
+      withdrawal: Math.round(withdrawal * 100) / 100,
     });
     if (value <= 0) break;
   }
@@ -54,8 +54,8 @@ const fmt = (n: number) =>
   n >= 1_000_000
     ? `$${(n / 1_000_000).toFixed(2)}M`
     : n >= 1000
-      ? `$${(n / 1000).toFixed(0)}K`
-      : `$${Math.round(n)}`;
+      ? `$${(n / 1000).toFixed(2)}K`
+      : `$${n.toFixed(2)}`;
 
 type TooltipPayload = { name?: string; value?: number; color?: string };
 const CustomTooltip = ({
@@ -248,7 +248,7 @@ export default function App() {
         );
         sim.forEach((d) => {
           yearArr[d.year][`${rate}%`] = d.value;
-          yearArr[d.year][`w${rate}`] = Math.round(d.withdrawal / 12);
+          yearArr[d.year][`w${rate}`] = Math.round((d.withdrawal / 12) * 100) / 100;
         });
       });
     } else {
@@ -261,7 +261,7 @@ export default function App() {
       );
       sim.forEach((d) => {
         yearArr[d.year][fixedKey] = d.value;
-        yearArr[d.year][`w${fixedKey}`] = Math.round(d.withdrawal / 12);
+        yearArr[d.year][`w${fixedKey}`] = Math.round((d.withdrawal / 12) * 100) / 100;
       });
     }
     return yearArr;
@@ -288,7 +288,8 @@ export default function App() {
         const lastPoint = sim[sim.length - 1];
         const depletedAt = lastPoint.value === 0 ? sim.findIndex((d) => d.value === 0) : null;
         const yr1Withdrawal = sim[1]?.withdrawal || 0;
-        const lastWithdrawal = lastPoint.value > 0 ? Math.round(lastPoint.value * (rate / 100)) : 0;
+        const lastWithdrawal =
+          lastPoint.value > 0 ? Math.round(lastPoint.value * (rate / 100) * 100) / 100 : 0;
         return {
           label: `${rate}%`,
           yr1Withdrawal,
@@ -781,13 +782,13 @@ export default function App() {
                           return (
                             <tr key={label}>
                               <td style={{ color, fontWeight: 500 }}>{label}</td>
-                              <td>{fmt(Math.round(yr1Withdrawal / 12))}</td>
+                              <td>{fmt(yr1Withdrawal / 12)}</td>
                               <td
                                 style={{
                                   color: lastWithdrawal >= yr1Withdrawal ? "#00ff87" : "#ff6b6b",
                                 }}
                               >
-                                {fmt(Math.round(lastWithdrawal / 12))}
+                                {fmt(lastWithdrawal / 12)}
                               </td>
                               <td>{fmt(finalValue)}</td>
                               <td style={{ color: statusColor }}>{status}</td>

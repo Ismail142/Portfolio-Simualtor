@@ -16,11 +16,16 @@ const fmt = (n: number) =>
   n >= 1_000_000
     ? `$${(n / 1_000_000).toFixed(2)}M`
     : n >= 1000
-      ? `$${(n / 1000).toFixed(0)}K`
-      : `$${Math.round(n)}`;
+      ? `$${(n / 1000).toFixed(2)}K`
+      : `$${n.toFixed(2)}`;
 
 const fmtExact = (n: number) =>
-  n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+  n.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 
 /** Solve for monthly withdrawal W so portfolio reaches $0 at end of n months.
  *  V(t+1) = V(t)*(1+r_m) + contribution - W  →  V(n) = 0
@@ -50,7 +55,7 @@ function simulateDrawdown(
   const totalYears = Math.ceil(months / 12);
 
   for (let y = 0; y <= totalYears; y++) {
-    points.push({ year: y, balance: Math.max(0, Math.round(balance)), age: 0 });
+    points.push({ year: y, balance: Math.max(0, Math.round(balance * 100) / 100), age: 0 });
     if (y < totalYears) {
       const monthsThisYear = Math.min(12, months - y * 12);
       for (let m = 0; m < monthsThisYear; m++) {
@@ -250,9 +255,9 @@ export default function RetirementDrawdown() {
             <span>Current Portfolio (GHS)</span>
             <span className="slider-val">
               {typeof draftPortfolioGHS === "number" && draftPortfolioGHS > 0
-                ? `₵${Math.round(draftPortfolioGHS).toLocaleString()}`
+                ? `₵${draftPortfolioGHS.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                 : typeof draftPortfolio === "number" && typeof draftExchangeRate === "number" && draftExchangeRate > 0
-                ? `₵${Math.round(draftPortfolio * draftExchangeRate).toLocaleString()}`
+                ? `₵${(draftPortfolio * draftExchangeRate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                 : "—"}
             </span>
           </div>
@@ -515,8 +520,8 @@ export default function RetirementDrawdown() {
                 </thead>
                 <tbody>
                   {chartData.map((d) => {
-                    const pct = portfolio > 0 ? ((d.balance / portfolio) * 100).toFixed(0) : "0";
-                    const annualWd = Math.round(annualWithdrawal - contribution * 12);
+                    const pct = portfolio > 0 ? ((d.balance / portfolio) * 100).toFixed(2) : "0.00";
+                    const annualWd = Math.round((annualWithdrawal - contribution * 12) * 100) / 100;
                     const depleting = d.balance < portfolio * 0.25;
                     return (
                       <tr key={d.year}>

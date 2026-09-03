@@ -315,8 +315,8 @@ export default function PortfolioYield() {
                                 whiteSpace: "nowrap",
                               }}>
                                 {targetPct >= 100
-                                  ? `✓ ${targetPct.toFixed(0)}%`
-                                  : `${targetPct.toFixed(0)}%`}
+                                  ? `✓ ${targetPct.toFixed(2)}%`
+                                  : `${targetPct.toFixed(2)}%`}
                               </span>
                             )}
                           </div>

@@ -42,8 +42,8 @@ const fmt = (n: number) =>
   n >= 1_000_000
     ? `$${(n / 1_000_000).toFixed(2)}M`
     : n >= 1000
-      ? `$${(n / 1000).toFixed(0)}K`
-      : `$${Math.round(n)}`;
+      ? `$${(n / 1000).toFixed(2)}K`
+      : `$${n.toFixed(2)}`;
 
 const fmtGHS = (n: number, er: number | null): string | null => {
   if (!er) return null;
@@ -51,8 +51,8 @@ const fmtGHS = (n: number, er: number | null): string | null => {
   return v >= 1_000_000
     ? `₵${(v / 1_000_000).toFixed(2)}M`
     : v >= 1000
-      ? `₵${(v / 1000).toFixed(0)}K`
-      : `₵${Math.round(v)}`;
+      ? `₵${(v / 1000).toFixed(2)}K`
+      : `₵${v.toFixed(2)}`;
 };
 
 type SimYear = {
@@ -93,9 +93,9 @@ function simulate(
     result.push({
       year: y,
       calendarYear,
-      portfolioBefore: Math.round(portfolioBefore),
-      withdrawal: Math.round(withdrawal),
-      portfolioAfter: Math.round(portfolio),
+      portfolioBefore: Math.round(portfolioBefore * 100) / 100,
+      withdrawal: Math.round(withdrawal * 100) / 100,
+      portfolioAfter: Math.round(portfolio * 100) / 100,
       annualReturn,
     });
   }
@@ -148,7 +148,7 @@ const MultiTooltip = ({
                 {monthlyGHS !== null && (
                   <span style={{ color: "#666" }}>
                     {" "}
-                    · ₵{Math.round(monthlyGHS).toLocaleString()}/mo
+                    · ₵{monthlyGHS.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mo
                   </span>
                 )}
               </div>
@@ -305,7 +305,7 @@ export default function DynamicWithdrawal() {
     return base.map((row, i) => {
       const point: Record<string, number> = { calendarYear: row.calendarYear };
       allSims.forEach(({ rate, data }) => {
-        point[`wd${rate}`] = Math.round((data[i + 1]?.withdrawal ?? 0) / 12);
+        point[`wd${rate}`] = Math.round(((data[i + 1]?.withdrawal ?? 0) / 12) * 100) / 100;
       });
       return point;
     });
@@ -411,7 +411,7 @@ export default function DynamicWithdrawal() {
             {DATA_YEARS.map((y) => (
               <option key={y} value={y} style={{ background: "#07070d" }}>
                 {y} ({HISTORICAL_RETURNS[y] >= 0 ? "+" : ""}
-                {HISTORICAL_RETURNS[y].toFixed(1)}%)
+                {HISTORICAL_RETURNS[y].toFixed(2)}%)
               </option>
             ))}
           </select>
@@ -753,7 +753,7 @@ export default function DynamicWithdrawal() {
                             />
                           </div>
                           <div style={{ fontSize: 10, color: "#666", marginTop: 4 }}>
-                            {retainedPct.toFixed(1)}% of start retained
+                            {retainedPct.toFixed(2)}% of start retained
                           </div>
                         </div>
                       </div>
@@ -871,8 +871,8 @@ export default function DynamicWithdrawal() {
                         axisLine={false}
                         tickFormatter={(v) =>
                           exchangeRate
-                            ? `₵${((Number(v) * exchangeRate) / 1000).toFixed(0)}K`
-                            : `$${(Number(v) / 1000).toFixed(0)}K`
+                            ? `₵${((Number(v) * exchangeRate) / 1000).toFixed(2)}K`
+                            : `$${(Number(v) / 1000).toFixed(2)}K`
                         }
                         width={52}
                       />
@@ -924,7 +924,7 @@ export default function DynamicWithdrawal() {
                                         <span
                                           style={{ color: "#666", fontSize: 10, marginLeft: 6 }}
                                         >
-                                          ₵{Math.round(ghs).toLocaleString()}
+                                          ₵{ghs.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                         </span>
                                       )}
                                     </span>
@@ -1010,7 +1010,7 @@ export default function DynamicWithdrawal() {
                             <td style={{ color: retColor, fontWeight: 500 }}>
                               {row.year === 0
                                 ? "—"
-                                : `${row.annualReturn >= 0 ? "+" : ""}${row.annualReturn.toFixed(1)}%`}
+                                : `${row.annualReturn >= 0 ? "+" : ""}${row.annualReturn.toFixed(2)}%`}
                             </td>
                             {allSims.map(({ rate, data }) => {
                               const val = data[i]?.portfolioAfter ?? 0;
