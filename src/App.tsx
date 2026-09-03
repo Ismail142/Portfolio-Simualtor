@@ -474,8 +474,8 @@ export default function App() {
                   : page === "yield"
                     ? "PORTFOLIO YIELD CALCULATOR"
                     : page === "dynamic"
-                    ? "DYNAMIC WITHDRAWAL SIMULATOR"
-                    : "SMART WITHDRAWAL SIMULATOR"}
+                      ? "DYNAMIC WITHDRAWAL SIMULATOR"
+                      : "SMART WITHDRAWAL SIMULATOR"}
           </h1>
           <p style={{ color: "#777", margin: "4px 0 0", fontSize: 13 }}>
             {page === "simulator"
@@ -487,7 +487,7 @@ export default function App() {
                   : page === "yield"
                     ? "Enter USD or GHS value · see monthly and annual yield at 4–8% · live currency conversion"
                     : page === "dynamic"
-                      ? "Test dynamic withdrawal against real S&P 500 returns 1985–2026 · USD & GHS"
+                      ? `Test dynamic withdrawal against real S&P 500 returns 1926–${new Date().getFullYear()} · USD & GHS`
                       : "Withdrawal rate auto-adjusts 4–8% based on portfolio gain vs cost basis · historical S&P 500"}
           </p>
         </header>
