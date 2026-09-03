@@ -359,7 +359,7 @@ export default function CompoundGrowth() {
                         Return:{" "}
                         <span style={{ color }}>
                           {m.contributed > 0
-                            ? `${(((m.value - m.contributed) / m.contributed) * 100).toFixed(0)}%`
+                            ? `${(((m.value - m.contributed) / m.contributed) * 100).toFixed(2)}%`
                             : "—"}
                         </span>
                       </div>
@@ -447,8 +447,8 @@ export default function CompoundGrowth() {
                       const interest = d.value - d.contributed;
                       const pct =
                         d.contributed > 0
-                          ? (((d.value - d.contributed) / d.contributed) * 100).toFixed(1)
-                          : "0.0";
+                          ? (((d.value - d.contributed) / d.contributed) * 100).toFixed(2)
+                          : "0.00";
                       const isCustom = d.year === years && !MILESTONE_YEARS.includes(d.year);
                       const milestoneIdx = MILESTONE_YEARS.indexOf(d.year);
                       const color =
