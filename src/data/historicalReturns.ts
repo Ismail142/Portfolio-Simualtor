@@ -1,6 +1,5 @@
 // S&P 500 historical annual total returns 1926–currentYear
 export const RETURNS: Record<number, number> = {
-  "2026": 14.06,
   "2025": 17.88,
   "2024": 25.02,
   "2023": 26.29,
