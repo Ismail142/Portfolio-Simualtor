@@ -388,7 +388,7 @@ export default function RetirementDrawdown() {
                 {
                   label: "MONTHLY WITHDRAWAL",
                   value: fmtExact(monthlyWithdrawal),
-                  ghsValue: exchangeRate ? `₵${(monthlyWithdrawal * exchangeRate).toLocaleString("en-US", { maximumFractionDigits: 0 })}/mo` : null,
+                  ghsValue: exchangeRate ? `₵${(monthlyWithdrawal * exchangeRate).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mo` : null,
                   sub: "Take this every month",
                   color: "#00ff87",
                   big: true,
@@ -396,7 +396,7 @@ export default function RetirementDrawdown() {
                 {
                   label: "ANNUAL WITHDRAWAL",
                   value: fmt(annualWithdrawal),
-                  ghsValue: exchangeRate ? `₵${(annualWithdrawal * exchangeRate).toLocaleString("en-US", { maximumFractionDigits: 0 })}/yr` : null,
+                  ghsValue: exchangeRate ? `₵${(annualWithdrawal * exchangeRate).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/yr` : null,
                   sub: "Per year total",
                   color: "#00d4ff",
                   big: false,
@@ -404,7 +404,7 @@ export default function RetirementDrawdown() {
                 {
                   label: "LIFETIME WITHDRAWN",
                   value: fmt(lifetimeWithdrawn),
-                  ghsValue: exchangeRate ? `₵${(lifetimeWithdrawn * exchangeRate).toLocaleString("en-US", { maximumFractionDigits: 0 })} total` : null,
+                  ghsValue: exchangeRate ? `₵${(lifetimeWithdrawn * exchangeRate).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} total` : null,
                   sub: `Over ${years} years`,
                   color: "#ffbe0b",
                   big: false,
@@ -412,7 +412,7 @@ export default function RetirementDrawdown() {
                 {
                   label: "NET FROM PORTFOLIO",
                   value: fmt(netDrawdown),
-                  ghsValue: exchangeRate ? `₵${(netDrawdown * exchangeRate).toLocaleString("en-US", { maximumFractionDigits: 0 })} net` : null,
+                  ghsValue: exchangeRate ? `₵${(netDrawdown * exchangeRate).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} net` : null,
                   sub: `After ${fmt(lifetimeContributed)} contributed`,
                   color: "#ff6b6b",
                   big: false,
