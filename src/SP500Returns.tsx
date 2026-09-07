@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -14,15 +14,15 @@ import {
 } from "recharts";
 import { RETURNS } from "./data/historicalReturns";
 
-const WINDOW = 30;
-
 const YEARS = Object.keys(RETURNS)
   .map(Number)
   .sort((a, b) => a - b);
 
 const MIN_YEAR = YEARS[0];
 const MAX_YEAR = YEARS[YEARS.length - 1];
-const MAX_START = MAX_YEAR - WINDOW + 1; // 1996
+const MAX_DURATION = MAX_YEAR - MIN_YEAR + 1; // full data span
+
+const STORAGE_KEY = "sp500-returns-duration";
 
 type PeriodStat = {
   start: number;
@@ -50,25 +50,21 @@ function computeCumulative(returns: number[]): number {
   return wealth; // multiple of starting capital
 }
 
-const ALL_PERIODS: PeriodStat[] = (() => {
+function buildPeriods(window: number): PeriodStat[] {
+  const maxStart = MAX_YEAR - window + 1;
   const out: PeriodStat[] = [];
-  for (let start = MIN_YEAR; start <= MAX_START; start++) {
+  for (let start = MIN_YEAR; start <= maxStart; start++) {
     const returns: number[] = [];
-    for (let y = start; y < start + WINDOW; y++) {
+    for (let y = start; y < start + window; y++) {
       returns.push(RETURNS[y] ?? 0);
     }
     const cagr = computeCAGR(returns);
     const cumulative = computeCumulative(returns);
     const avgAnnual = returns.reduce((s, r) => s + r, 0) / returns.length;
-    out.push({ start, end: start + WINDOW - 1, returns, cagr, cumulative, avgAnnual });
+    out.push({ start, end: start + window - 1, returns, cagr, cumulative, avgAnnual });
   }
   return out;
-})();
-
-const sortedByCagr = [...ALL_PERIODS].sort((a, b) => a.cagr - b.cagr);
-const worst = sortedByCagr[0];
-const best = sortedByCagr[sortedByCagr.length - 1];
-const median = sortedByCagr[Math.floor(sortedByCagr.length / 2)];
+}
 
 const fmtPct = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`;
 const fmtMult = (n: number) => `${n.toFixed(2)}×`;
@@ -131,40 +127,206 @@ function buildBins(returns: number[]) {
 }
 
 export default function SP500Returns() {
+  const [draftDuration, setDraftDuration] = useState<number | "">(30);
+  const [duration, setDuration] = useState(30);
   const [selectedStart, setSelectedStart] = useState(1950);
 
+  // Restore saved duration on mount
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const n = Math.floor(Number(raw));
+      if (!Number.isFinite(n) || n < 1 || n > MAX_DURATION) return;
+      setDraftDuration(n);
+      setDuration(n);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const allPeriods = useMemo(() => buildPeriods(duration), [duration]);
+
+  const maxStart = MAX_YEAR - duration + 1;
+
+  // Keep selectedStart valid when duration changes
+  useEffect(() => {
+    if (allPeriods.length === 0) return;
+    const stillValid = allPeriods.some((p) => p.start === selectedStart);
+    if (!stillValid) {
+      // Prefer 1950 if available, otherwise first period
+      const preferred = allPeriods.find((p) => p.start === 1950) ?? allPeriods[0];
+      setSelectedStart(preferred.start);
+    }
+  }, [duration, allPeriods, selectedStart]);
+
+  const sortedByCagr = useMemo(
+    () => [...allPeriods].sort((a, b) => a.cagr - b.cagr),
+    [allPeriods],
+  );
+  const worst = sortedByCagr[0];
+  const best = sortedByCagr[sortedByCagr.length - 1];
+  const median = sortedByCagr[Math.floor(sortedByCagr.length / 2)];
+
   const selected = useMemo(
-    () => ALL_PERIODS.find((p) => p.start === selectedStart) ?? ALL_PERIODS[0],
-    [selectedStart],
+    () => allPeriods.find((p) => p.start === selectedStart) ?? allPeriods[0],
+    [allPeriods, selectedStart],
   );
 
   const annualBars = useMemo(
     () =>
-      selected.returns.map((r, i) => ({
-        year: selected.start + i,
-        return: r,
-      })),
+      selected
+        ? selected.returns.map((r, i) => ({
+            year: selected.start + i,
+            return: r,
+          }))
+        : [],
     [selected],
   );
 
-  const bins = useMemo(() => buildBins(selected.returns), [selected]);
+  const bins = useMemo(
+    () => (selected ? buildBins(selected.returns) : []),
+    [selected],
+  );
 
   const cagrSeries = useMemo(
     () =>
-      ALL_PERIODS.map((p) => ({
+      allPeriods.map((p) => ({
         start: p.start,
         cagr: +p.cagr.toFixed(2),
         end: p.end,
         cumulative: +p.cumulative.toFixed(2),
       })),
-    [],
+    [allPeriods],
   );
 
-  const positiveCount = selected.returns.filter((r) => r >= 0).length;
-  const negativeCount = selected.returns.length - positiveCount;
+  const positiveCount = selected ? selected.returns.filter((r) => r >= 0).length : 0;
+  const negativeCount = selected ? selected.returns.length - positiveCount : 0;
+
+  const isDirty = Number(draftDuration) !== duration;
+
+  const handleCalculate = () => {
+    let n = Math.floor(Number(draftDuration) || 30);
+    if (!Number.isFinite(n) || n < 1) n = 1;
+    if (n > MAX_DURATION) n = MAX_DURATION;
+    setDraftDuration(n);
+    setDuration(n);
+    try {
+      window.localStorage.setItem(STORAGE_KEY, String(n));
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const windowLabel = `${duration}-YR`;
+  const windowLabelLong = `${duration}-year`;
+
+  if (!selected || !best || !worst || !median) {
+    return (
+      <div style={{ fontFamily: "'DM Mono', monospace", color: "#888", padding: 24 }}>
+        Not enough historical data for a {duration}-year window.
+      </div>
+    );
+  }
 
   return (
     <div style={{ fontFamily: "'DM Mono', monospace" }}>
+      {/* Duration input + Calculate */}
+      <div
+        style={{
+          background: "#0e0e18",
+          border: "1px solid #1a1a28",
+          borderRadius: 12,
+          padding: "18px 20px",
+          marginBottom: 22,
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "flex-end",
+          gap: 16,
+        }}
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 160 }}>
+          <label
+            style={{
+              fontSize: 12,
+              color: "#888",
+              letterSpacing: 0.5,
+            }}
+          >
+            WINDOW DURATION (YEARS)
+          </label>
+          <input
+            type="number"
+            className="num-input"
+            min={1}
+            max={MAX_DURATION}
+            value={draftDuration}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === "") {
+                setDraftDuration("");
+                return;
+              }
+              const n = Math.floor(Number(v));
+              if (!Number.isFinite(n)) return;
+              setDraftDuration(n);
+            }}
+            style={{
+              width: 120,
+              background: "#07070d",
+              border: "1px solid #1a1a28",
+              color: "#00ff87",
+              fontFamily: "'DM Mono', monospace",
+              fontSize: 15,
+              padding: "8px 10px",
+              borderRadius: 6,
+              outline: "none",
+              textAlign: "right",
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = "#00ff87";
+              e.currentTarget.style.boxShadow = "0 0 0 2px #00ff8722";
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = "#1a1a28";
+              e.currentTarget.style.boxShadow = "none";
+            }}
+          />
+          <span style={{ fontSize: 11, color: "#555" }}>
+            1 – {MAX_DURATION} (data {MIN_YEAR}–{MAX_YEAR})
+          </span>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+          {isDirty && (
+            <span style={{ fontSize: 12, color: "#ffbe0b", letterSpacing: 0.5 }}>
+              Inputs changed — click Calculate
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={handleCalculate}
+            disabled={!isDirty}
+            style={{
+              background: isDirty ? "#00ff87" : "#1a1a28",
+              color: isDirty ? "#050510" : "#555",
+              border: "none",
+              padding: "12px 28px",
+              borderRadius: 8,
+              fontFamily: "'Bebas Neue', sans-serif",
+              fontSize: 16,
+              letterSpacing: 3,
+              cursor: isDirty ? "pointer" : "not-allowed",
+              boxShadow: isDirty ? "0 0 20px #00ff8744" : "none",
+              transition: "all 0.15s",
+            }}
+          >
+            CALCULATE
+          </button>
+        </div>
+      </div>
+
       {/* Summary cards */}
       <div
         style={{
@@ -176,7 +338,7 @@ export default function SP500Returns() {
       >
         {[
           {
-            title: "BEST 30-YR",
+            title: `BEST ${windowLabel}`,
             startYear: best.start,
             period: `${best.start}–${best.end}`,
             value: fmtPct(best.cagr),
@@ -184,7 +346,7 @@ export default function SP500Returns() {
             color: "#00ff87",
           },
           {
-            title: "MEDIAN 30-YR",
+            title: `MEDIAN ${windowLabel}`,
             startYear: median.start,
             period: `${median.start}–${median.end}`,
             value: fmtPct(median.cagr),
@@ -192,7 +354,7 @@ export default function SP500Returns() {
             color: "#00d4ff",
           },
           {
-            title: "WORST 30-YR",
+            title: `WORST ${windowLabel}`,
             startYear: worst.start,
             period: `${worst.start}–${worst.end}`,
             value: fmtPct(worst.cagr),
@@ -260,11 +422,11 @@ export default function SP500Returns() {
             margin: "0 0 6px",
           }}
         >
-          ROLLING 30-YEAR CAGR · ALL START YEARS
+          ROLLING {duration}-YEAR CAGR · ALL START YEARS
         </h2>
         <p style={{ color: "#666", fontSize: 12, margin: "0 0 16px" }}>
-          Each point is the annualized return of the 30-year window beginning that year
-          ({MIN_YEAR}–{MAX_START}). Click a point or use the selector below to inspect a period.
+          Each point is the annualized return of the {windowLabelLong} window beginning that year
+          ({MIN_YEAR}–{maxStart}). Click a point or use the selector below to inspect a period.
         </p>
         <div style={{ width: "100%", height: 280 }}>
           <ResponsiveContainer>
@@ -295,7 +457,7 @@ export default function SP500Returns() {
               <Line
                 type="monotone"
                 dataKey="cagr"
-                name="30-yr CAGR"
+                name={`${duration}-yr CAGR`}
                 stroke="#00ff87"
                 strokeWidth={2}
                 dot={false}
@@ -316,7 +478,9 @@ export default function SP500Returns() {
           marginBottom: 18,
         }}
       >
-        <span style={{ fontSize: 12, color: "#888", letterSpacing: 1.5 }}>SELECT 30-YR WINDOW</span>
+        <span style={{ fontSize: 12, color: "#888", letterSpacing: 1.5 }}>
+          SELECT {duration}-YR WINDOW
+        </span>
         <select
           value={selectedStart}
           onChange={(e) => setSelectedStart(Number(e.target.value))}
@@ -332,7 +496,7 @@ export default function SP500Returns() {
             cursor: "pointer",
           }}
         >
-          {ALL_PERIODS.map((p) => (
+          {allPeriods.map((p) => (
             <option key={p.start} value={p.start}>
               {p.start} – {p.end} · CAGR {fmtPct(p.cagr)}
             </option>
@@ -380,8 +544,8 @@ export default function SP500Returns() {
           { label: "AVG ANNUAL", value: fmtPct(selected.avgAnnual), color: "#ffbe0b" },
           {
             label: "UP YEARS",
-            value: `${positiveCount}/${WINDOW}`,
-            color: positiveCount >= 20 ? "#00ff87" : "#ff6b6b",
+            value: `${positiveCount}/${duration}`,
+            color: positiveCount >= Math.ceil(duration * 0.67) ? "#00ff87" : "#ff6b6b",
           },
         ].map((s) => (
           <div
@@ -440,7 +604,7 @@ export default function SP500Returns() {
                   dataKey="year"
                   stroke="#555"
                   tick={{ fill: "#666", fontSize: 10 }}
-                  interval={4}
+                  interval={Math.max(0, Math.floor(duration / 8) - 1)}
                 />
                 <YAxis
                   stroke="#555"
@@ -516,7 +680,9 @@ export default function SP500Returns() {
                         }}
                       >
                         <div style={{ color: "#888", marginBottom: 4 }}>{d.label}</div>
-                        <div style={{ color: "#00ff87" }}>{d.count} year{d.count !== 1 ? "s" : ""}</div>
+                        <div style={{ color: "#00ff87" }}>
+                          {d.count} year{d.count !== 1 ? "s" : ""}
+                        </div>
                       </div>
                     );
                   }}
@@ -544,8 +710,8 @@ export default function SP500Returns() {
           letterSpacing: 1,
         }}
       >
-        S&amp;P 500 total returns {MIN_YEAR}–{MAX_YEAR} · 30-year rolling windows · For illustrative
-        purposes only · Not financial advice
+        S&amp;P 500 total returns {MIN_YEAR}–{MAX_YEAR} · {duration}-year rolling windows · For
+        illustrative purposes only · Not financial advice
       </p>
     </div>
   );
