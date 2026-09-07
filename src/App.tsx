@@ -478,7 +478,7 @@ export default function App() {
                     ? "Enter USD or GHS value · see monthly and annual yield at 4–8% · live currency conversion"
                     : page === "dynamic"
                       ? `Test dynamic withdrawal against real S&P 500 returns 1926–${new Date().getFullYear()} · USD & GHS`
-                      : "Rolling 30-year windows · annual return distributions & CAGR · best / median / worst periods"}
+                      : "Choose any window length · rolling CAGRs · annual return distributions · best / median / worst periods"}
           </p>
         </header>
 
