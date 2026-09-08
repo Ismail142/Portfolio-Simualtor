@@ -169,6 +169,19 @@ export default function SP500Returns() {
   const best = sortedByCagr[sortedByCagr.length - 1];
   const median = sortedByCagr[Math.floor(sortedByCagr.length / 2)];
 
+  // Full-history (all-time) stats — independent of the selected window duration
+  const allTime = useMemo(() => {
+    const returns = YEARS.map((y) => RETURNS[y] ?? 0);
+    return {
+      start: MIN_YEAR,
+      end: MAX_YEAR,
+      returns,
+      cagr: computeCAGR(returns),
+      cumulative: computeCumulative(returns),
+      avgAnnual: returns.reduce((s, r) => s + r, 0) / returns.length,
+    };
+  }, []);
+
   const selected = useMemo(
     () => allPeriods.find((p) => p.start === selectedStart) ?? allPeriods[0],
     [allPeriods, selectedStart],
@@ -344,6 +357,7 @@ export default function SP500Returns() {
             value: fmtPct(best.cagr),
             sub: `${fmtMult(best.cumulative)} cumulative`,
             color: "#00ff87",
+            isAllTime: false,
           },
           {
             title: `MEDIAN ${windowLabel}`,
@@ -352,6 +366,7 @@ export default function SP500Returns() {
             value: fmtPct(median.cagr),
             sub: `${fmtMult(median.cumulative)} cumulative`,
             color: "#00d4ff",
+            isAllTime: false,
           },
           {
             title: `WORST ${windowLabel}`,
@@ -360,6 +375,16 @@ export default function SP500Returns() {
             value: fmtPct(worst.cagr),
             sub: `${fmtMult(worst.cumulative)} cumulative`,
             color: "#ff6b6b",
+            isAllTime: false,
+          },
+          {
+            title: "ALL-TIME",
+            startYear: allTime.start,
+            period: `${allTime.start}–${allTime.end}`,
+            value: fmtPct(allTime.cagr),
+            sub: `${fmtMult(allTime.cumulative)} cumulative`,
+            color: "#ffbe0b",
+            isAllTime: true,
           },
         ].map((card) => (
           <div
@@ -373,7 +398,20 @@ export default function SP500Returns() {
               cursor: "pointer",
               transition: "border-color 0.15s",
             }}
-            onClick={() => setSelectedStart(card.startYear)}
+            onClick={() => {
+              if (card.isAllTime) {
+                setDraftDuration(MAX_DURATION);
+                setDuration(MAX_DURATION);
+                setSelectedStart(MIN_YEAR);
+                try {
+                  window.localStorage.setItem(STORAGE_KEY, String(MAX_DURATION));
+                } catch {
+                  /* ignore */
+                }
+              } else {
+                setSelectedStart(card.startYear);
+              }
+            }}
             onMouseEnter={(e) => {
               (e.currentTarget as HTMLDivElement).style.borderColor = card.color;
             }}
