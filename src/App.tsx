@@ -4,6 +4,7 @@ import RetirementDrawdown from "./RetirementDrawdown";
 import PortfolioYield from "./PortfolioYield";
 import DynamicWithdrawal from "./DynamicWithdrawal";
 import SP500Returns from "./SP500Returns";
+import CryptoReturns from "./CryptoReturns";
 import {
   CartesianGrid,
   Legend,
@@ -91,7 +92,7 @@ const CustomTooltip = ({
   );
 };
 
-type Page = "simulator" | "compound" | "retirement" | "yield" | "dynamic" | "sp500";
+type Page = "simulator" | "compound" | "retirement" | "yield" | "dynamic" | "sp500" | "crypto";
 
 const STORAGE_KEY = "portfolio-simulator-inputs";
 
@@ -102,6 +103,7 @@ const NAV_ITEMS: { key: Page; label: string; short: string }[] = [
   { key: "yield", label: "Yield Calculator", short: "YIELD" },
   { key: "dynamic", label: "Dynamic Withdrawal", short: "DYNAMIC" },
   { key: "sp500", label: "S&P 500 Returns", short: "S&P 500" },
+  { key: "crypto", label: "Crypto Returns", short: "CRYPTO" },
 ];
 
 export default function App() {
@@ -113,6 +115,7 @@ export default function App() {
       if (saved === "yield") return "yield";
       if (saved === "dynamic") return "dynamic";
       if (saved === "sp500") return "sp500";
+      if (saved === "crypto") return "crypto";
       return "simulator";
     } catch {
       return "simulator";
@@ -465,7 +468,9 @@ export default function App() {
                     ? "PORTFOLIO YIELD CALCULATOR"
                     : page === "dynamic"
                       ? "DYNAMIC WITHDRAWAL SIMULATOR"
-                      : "S&P 500 RETURNS"}
+                      : page === "crypto"
+                        ? "CRYPTO RETURNS"
+                        : "S&P 500 RETURNS"}
           </h1>
           <p style={{ color: "#777", margin: "4px 0 0", fontSize: 13 }}>
             {page === "simulator"
@@ -478,7 +483,9 @@ export default function App() {
                     ? "Enter USD or GHS value · see monthly and annual yield at 4–8% · live currency conversion"
                     : page === "dynamic"
                       ? `Test dynamic withdrawal against real S&P 500 returns 1926–${new Date().getFullYear()} · USD & GHS`
-                      : "Choose any window length · rolling CAGRs · annual return distributions · best / median / worst periods"}
+                      : page === "crypto"
+                        ? "Bitcoin annual returns · choose any window length · rolling CAGRs · best / median / worst periods"
+                        : "Choose any window length · rolling CAGRs · annual return distributions · best / median / worst periods"}
           </p>
         </header>
 
@@ -488,6 +495,7 @@ export default function App() {
           {page === "yield" && <PortfolioYield />}
           {page === "dynamic" && <DynamicWithdrawal />}
           {page === "sp500" && <SP500Returns />}
+          {page === "crypto" && <CryptoReturns />}
           {page === "simulator" && (
             <>
               <div
