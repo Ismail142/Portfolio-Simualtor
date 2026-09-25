@@ -1,5 +1,6 @@
 // Bitcoin historical annual total returns (calendar year)
 export const BTC_RETURNS: Record<number, number> = {
+  "2026": -3.55,
   "2025": -6.34,
   "2024": 121.05,
   "2023": 155.42,
